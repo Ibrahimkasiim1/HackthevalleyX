@@ -5,7 +5,7 @@ import { getRoute } from '@/services/navigation';
 import * as Location from 'expo-location';
 import { useEffect, useState } from 'react';
 import { Alert, Dimensions, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
-import MapView, { Marker, Polyline } from 'react-native-maps';
+import MapView, { Marker, Polyline, PROVIDER_GOOGLE } from 'react-native-maps';
 
 const { width, height } = Dimensions.get('window');
 
@@ -21,6 +21,13 @@ export default function HomeScreen() {
   const [currentStepIndex, setCurrentStepIndex] = useState(0);
   const [hapticNotification, setHapticNotification] = useState<{visible: boolean, message: string, command: string}>({visible: false, message: '', command: ''});
   const [distanceToNextTurn, setDistanceToNextTurn] = useState<number>(0);
+
+  // New state for enhanced navigation features
+  const [userHeading, setUserHeading] = useState<number>(0);
+  const [isOffRoute, setIsOffRoute] = useState(false);
+  const [rerouteCount, setRerouteCount] = useState(0);
+  const [navigationMode, setNavigationMode] = useState<'overview' | 'navigation'>('overview');
+  const [isRerouting, setIsRerouting] = useState(false);
 
   // Request location permissions on component mount
   useEffect(() => {
@@ -56,6 +63,20 @@ export default function HomeScreen() {
     }
   };
 
+  // Calculate bearing (heading) between two points
+  const calculateBearing = (lat1: number, lon1: number, lat2: number, lon2: number): number => {
+    const dLon = (lon2 - lon1) * Math.PI / 180;
+    const lat1Rad = lat1 * Math.PI / 180;
+    const lat2Rad = lat2 * Math.PI / 180;
+    
+    const y = Math.sin(dLon) * Math.cos(lat2Rad);
+    const x = Math.cos(lat1Rad) * Math.sin(lat2Rad) - 
+              Math.sin(lat1Rad) * Math.cos(lat2Rad) * Math.cos(dLon);
+    
+    let bearing = Math.atan2(y, x) * 180 / Math.PI;
+    return (bearing + 360) % 360; // Normalize to 0-360 degrees
+  };
+
   // Start real-time location tracking
   const startLocationTracking = async () => {
     try {
@@ -73,12 +94,35 @@ export default function HomeScreen() {
             longitudeDelta: 0.01,
           };
           
+          // Calculate heading if we have a previous location
+          if (currentLocation && isNavigationActive) {
+            const heading = calculateBearing(
+              currentLocation.latitude, 
+              currentLocation.longitude,
+              location.coords.latitude, 
+              location.coords.longitude
+            );
+            
+            // Only update heading if user moved significantly (reduces jitter)
+            const distance = calculateDistance(
+              currentLocation.latitude, 
+              currentLocation.longitude,
+              location.coords.latitude, 
+              location.coords.longitude
+            );
+            
+            if (distance > 3) { // User moved at least 3 meters
+              setUserHeading(heading);
+            }
+          }
+          
           setCurrentLocation(newLocation);
           console.log('📍 Location updated:', location.coords.latitude, location.coords.longitude);
           
-          // Check if approaching a turn during active navigation
+          // Enhanced navigation checks during active navigation
           if (isNavigationActive) {
             checkTurnProximity(location.coords.latitude, location.coords.longitude);
+            checkIfOffRoute(location.coords.latitude, location.coords.longitude);
           }
         }
       );
@@ -113,6 +157,93 @@ export default function HomeScreen() {
     const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
 
     return R * c; // Distance in meters
+  };
+
+  // Check if user is off the planned route
+  const checkIfOffRoute = (userLat: number, userLon: number) => {
+    if (!routeData || !routeData.steps || !isNavigationActive) return;
+    
+    // Find the closest point on the route
+    let minDistanceToRoute = Infinity;
+    
+    // Check distance to current step and next few steps
+    for (let i = Math.max(0, currentStepIndex - 1); i < Math.min(routeData.steps.length, currentStepIndex + 3); i++) {
+      const step = routeData.steps[i];
+      if (!step) continue;
+      
+      // Calculate distance to step start point
+      const distanceToStart = calculateDistance(userLat, userLon, step.triggerAt.lat, step.triggerAt.lng);
+      const distanceToEnd = calculateDistance(userLat, userLon, step.end.lat, step.end.lng);
+      
+      minDistanceToRoute = Math.min(minDistanceToRoute, distanceToStart, distanceToEnd);
+    }
+    
+    // Consider user off-route if more than 50 meters from any nearby route point
+    const isCurrentlyOffRoute = minDistanceToRoute > 50;
+    
+    if (isCurrentlyOffRoute && !isOffRoute && !isRerouting) {
+      console.log('🚨 User appears to be off-route. Distance from route:', Math.round(minDistanceToRoute), 'meters');
+      setIsOffRoute(true);
+      
+      // Trigger rerouting after a brief delay to avoid false positives
+      setTimeout(() => {
+        if (isOffRoute && !isRerouting) {
+          triggerRerouting(userLat, userLon);
+        }
+      }, 8000); // Wait 8 seconds before rerouting
+      
+    } else if (!isCurrentlyOffRoute && isOffRoute) {
+      // User is back on route
+      setIsOffRoute(false);
+      console.log('✅ User is back on route');
+    }
+  };
+
+  // Trigger automatic rerouting
+  const triggerRerouting = async (userLat: number, userLon: number) => {
+    if (isRerouting || !routeData) return;
+    
+    setIsRerouting(true);
+    setRerouteCount(prev => prev + 1);
+    console.log(`🔄 Rerouting attempt #${rerouteCount + 1}...`);
+    
+    try {
+      // Use current location as new starting point
+      const currentLocationString = `${userLat},${userLon}`;
+      
+      // Get new route from current position to original destination
+      const newRoute = await getRoute(
+        currentLocationString, 
+        destination, 
+        transportMode, 
+        { latitude: userLat, longitude: userLon }
+      );
+      
+      // Update route data with new route
+      setRouteData(newRoute);
+      setCurrentStepIndex(0); // Reset to first step of new route
+      setIsOffRoute(false);
+      
+      console.log('✅ Route recalculated successfully');
+      Alert.alert(
+        '🔄 Route Updated', 
+        'We found a better path from your current location!',
+        [{ text: 'Continue', style: 'default' }]
+      );
+      
+    } catch (error) {
+      console.error('❌ Rerouting failed:', error);
+      Alert.alert(
+        'Rerouting Failed', 
+        'Could not calculate new route. Please check your connection.',
+        [
+          { text: 'Try Again', onPress: () => triggerRerouting(userLat, userLon) },
+          { text: 'Cancel', style: 'cancel' }
+        ]
+      );
+    } finally {
+      setIsRerouting(false);
+    }
   };
 
   // Check if user is approaching a turn and trigger haptic notification
@@ -187,6 +318,14 @@ export default function HomeScreen() {
       setCurrentStepIndex(0);
       setDistanceToNextTurn(0);
       
+      // Switch to navigation mode for enhanced view
+      setNavigationMode('navigation');
+      
+      // Reset navigation state
+      setIsOffRoute(false);
+      setRerouteCount(0);
+      setUserHeading(0);
+      
       // Start real-time GPS tracking
       await startLocationTracking();
       
@@ -208,10 +347,22 @@ export default function HomeScreen() {
     setDistanceToNextTurn(0);
     setHapticNotification({visible: false, message: '', command: ''});
     
+    // Reset navigation state
+    setNavigationMode('overview');
+    setIsOffRoute(false);
+    setRerouteCount(0);
+    setIsRerouting(false);
+    setUserHeading(0);
+    
     // Stop real-time GPS tracking
     stopLocationTracking();
     
     Alert.alert('Navigation Stopped', '🛑 GPS tracking stopped. You can start a new route anytime.');
+  };
+
+  // Toggle between overview and navigation view
+  const toggleNavigationView = () => {
+    setNavigationMode(prev => prev === 'overview' ? 'navigation' : 'overview');
   };
 
   // Cleanup on component unmount
@@ -298,10 +449,26 @@ export default function HomeScreen() {
       <View style={styles.mapContainer}>
         {currentLocation ? (
           <MapView
+            provider={PROVIDER_GOOGLE}
             style={styles.map}
             initialRegion={currentLocation}
+            camera={navigationMode === 'navigation' && isNavigationActive ? {
+              center: {
+                latitude: currentLocation.latitude,
+                longitude: currentLocation.longitude,
+              },
+              pitch: 60, // 3D perspective for walking navigation
+              heading: userHeading, // Rotate map based on walking direction
+              zoom: 18, // Street-level zoom for detailed navigation
+            } : undefined}
             showsUserLocation={true}
-            showsMyLocationButton={true}
+            showsMyLocationButton={!isNavigationActive}
+            followsUserLocation={isNavigationActive}
+            rotateEnabled={true}
+            pitchEnabled={true}
+            zoomEnabled={true}
+            scrollEnabled={!isNavigationActive || navigationMode === 'overview'}
+            mapType={navigationMode === 'navigation' ? 'standard' : 'standard'}
           >
             {/* Current location marker */}
             <Marker
@@ -450,12 +617,37 @@ export default function HomeScreen() {
           </ThemedView>
         ) : (
           <ThemedView style={styles.activeNavigation}>
-            <TouchableOpacity 
-              style={[styles.button, styles.stopButton]} 
-              onPress={stopNavigation}
-            >
-              <ThemedText style={styles.buttonText}>⏹️ Stop Navigation</ThemedText>
-            </TouchableOpacity>
+            {/* Rerouting status indicator */}
+            {isRerouting && (
+              <ThemedView style={styles.reroutingIndicator}>
+                <ThemedText style={styles.reroutingText}>🔄 Recalculating route...</ThemedText>
+              </ThemedView>
+            )}
+            
+            {/* Off-route warning */}
+            {isOffRoute && !isRerouting && (
+              <ThemedView style={styles.offRouteIndicator}>
+                <ThemedText style={styles.offRouteText}>⚠️ Off route - rerouting soon...</ThemedText>
+              </ThemedView>
+            )}
+            
+            <ThemedView style={styles.navigationButtons}>
+              <TouchableOpacity 
+                style={[styles.button, styles.viewToggleButton]} 
+                onPress={toggleNavigationView}
+              >
+                <ThemedText style={styles.buttonText}>
+                  {navigationMode === 'navigation' ? '🗺️ Overview' : '🧭 Navigate'}
+                </ThemedText>
+              </TouchableOpacity>
+              
+              <TouchableOpacity 
+                style={[styles.button, styles.stopButton]} 
+                onPress={stopNavigation}
+              >
+                <ThemedText style={styles.buttonText}>⏹️ Stop Navigation</ThemedText>
+              </TouchableOpacity>
+            </ThemedView>
           </ThemedView>
         )}
 
@@ -857,5 +1049,42 @@ const styles = StyleSheet.create({
     fontSize: 13,
     textAlign: 'center',
     fontWeight: '500',
+  },
+  // New styles for enhanced navigation
+  reroutingIndicator: {
+    backgroundColor: '#fff3cd',
+    borderLeftWidth: 4,
+    borderLeftColor: '#ffc107',
+    borderRadius: 8,
+    padding: 12,
+    marginBottom: 12,
+    alignItems: 'center',
+  },
+  reroutingText: {
+    color: '#856404',
+    fontSize: 14,
+    fontWeight: 'bold',
+  },
+  offRouteIndicator: {
+    backgroundColor: '#f8d7da',
+    borderLeftWidth: 4,
+    borderLeftColor: '#dc3545',
+    borderRadius: 8,
+    padding: 12,
+    marginBottom: 12,
+    alignItems: 'center',
+  },
+  offRouteText: {
+    color: '#721c24',
+    fontSize: 14,
+    fontWeight: 'bold',
+  },
+  navigationButtons: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  viewToggleButton: {
+    backgroundColor: '#6f42c1',
+    flex: 1,
   },
 });
