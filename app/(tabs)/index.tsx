@@ -172,8 +172,8 @@ export default function HomeScreen() {
 
     setLoading(true);
     try {
-      // Use actual coordinates when no origin is specified, instead of "Current Location" string
-      const fromLocation = origin.trim() || `${currentLocation.latitude},${currentLocation.longitude}`;
+      // Use special identifier when no origin is specified, let server handle current location
+      const fromLocation = origin.trim() || "USER_CURRENT_LOCATION";
       
       // Pass current location for better place resolution
       const userLocationForBias = currentLocation ? {

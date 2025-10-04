@@ -170,8 +170,26 @@ app.get('/convo/route.build', async (req, res) => {
     
     console.log('📍 Using location bias:', locationBias ? `${userLat},${userLng}` : 'None provided');
 
-    // Resolve start and destination locations with improved bias
-    const O = await findPlace(startLocation, locationBias);
+    // Handle special case for current location
+    let O;
+    if (startLocation === "USER_CURRENT_LOCATION") {
+      if (!userLat || !userLng) {
+        return res.status(400).json({ error: 'User coordinates required when using current location' });
+      }
+      O = {
+        name: "Current Location",
+        placeId: null,
+        lat: userLat,
+        lng: userLng,
+        address: `${userLat},${userLng}`
+      };
+      console.log('🎯 Using user current location as origin:', O);
+    } else {
+      // Resolve start location normally
+      O = await findPlace(startLocation, locationBias);
+    }
+    
+    // Resolve destination location with improved bias
     const D = await findPlace(endLocation, locationBias || O);
 
     // directions
