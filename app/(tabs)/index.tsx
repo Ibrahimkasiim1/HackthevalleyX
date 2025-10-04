@@ -16,6 +16,7 @@ export default function HomeScreen() {
   const [origin, setOrigin] = useState('');
   const [isNavigationActive, setIsNavigationActive] = useState(false);
   const [transportMode, setTransportMode] = useState<'walking' | 'transit'>('walking');
+  const [locationSubscription, setLocationSubscription] = useState<any>(null);
 
   // Request location permissions on component mount
   useEffect(() => {
@@ -51,6 +52,44 @@ export default function HomeScreen() {
     }
   };
 
+  // Start real-time location tracking
+  const startLocationTracking = async () => {
+    try {
+      const subscription = await Location.watchPositionAsync(
+        {
+          accuracy: Location.Accuracy.BestForNavigation,
+          timeInterval: 2000, // Update every 2 seconds
+          distanceInterval: 5, // Update every 5 meters
+        },
+        (location) => {
+          const newLocation = {
+            latitude: location.coords.latitude,
+            longitude: location.coords.longitude,
+            latitudeDelta: 0.01,
+            longitudeDelta: 0.01,
+          };
+          
+          setCurrentLocation(newLocation);
+          console.log('📍 Location updated:', location.coords.latitude, location.coords.longitude);
+        }
+      );
+      
+      setLocationSubscription(subscription);
+      console.log('🛰️ Real-time GPS tracking started');
+    } catch (error) {
+      Alert.alert('Error', 'Failed to start location tracking');
+    }
+  };
+
+  // Stop location tracking
+  const stopLocationTracking = () => {
+    if (locationSubscription) {
+      locationSubscription.remove();
+      setLocationSubscription(null);
+      console.log('🛑 GPS tracking stopped');
+    }
+  };
+
   const startNavigation = async () => {
     if (!destination.trim()) {
       Alert.alert('Error', 'Please enter a destination');
@@ -63,7 +102,14 @@ export default function HomeScreen() {
       const route = await getRoute(fromLocation, destination, transportMode);
       setRouteData(route);
       setIsNavigationActive(true);
-      Alert.alert('Navigation Started!', `${transportMode.toUpperCase()} Route: ${route.summary.originName} → ${route.summary.destinationName}`);
+      
+      // Start real-time GPS tracking
+      await startLocationTracking();
+      
+      Alert.alert(
+        'Navigation Started!', 
+        `${transportMode.toUpperCase()} Route: ${route.summary.originName} → ${route.summary.destinationName}\n\n🛰️ Real-time GPS tracking is now active!`
+      );
     } catch (error) {
       Alert.alert('Error', String(error));
     } finally {
@@ -74,8 +120,19 @@ export default function HomeScreen() {
   const stopNavigation = () => {
     setIsNavigationActive(false);
     setRouteData(null);
-    Alert.alert('Navigation Stopped', 'You can start a new route anytime');
+    
+    // Stop real-time GPS tracking
+    stopLocationTracking();
+    
+    Alert.alert('Navigation Stopped', '🛑 GPS tracking stopped. You can start a new route anytime.');
   };
+
+  // Cleanup on component unmount
+  useEffect(() => {
+    return () => {
+      stopLocationTracking();
+    };
+  }, []);
 
   // Simple polyline decoder (basic implementation)
   const decodePolyline = (encoded: string) => {
