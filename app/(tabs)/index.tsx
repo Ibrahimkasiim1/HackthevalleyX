@@ -1,13 +1,23 @@
 import { Image } from 'expo-image';
-import { Platform, StyleSheet } from 'react-native';
+import { Alert, Button, Platform, StyleSheet } from 'react-native';
 
 import { HelloWave } from '@/components/hello-wave';
 import ParallaxScrollView from '@/components/parallax-scroll-view';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
+import { getRoute } from '@/services/navigation';
 import { Link } from 'expo-router';
 
 export default function HomeScreen() {
+  const testNavigation = async () => {
+    try {
+      const route = await getRoute('UTSC', 'CN Tower');
+      Alert.alert('Success!', `Got route with ${route.steps.length} steps`);
+    } catch (error) {
+      Alert.alert('Error', String(error));
+    }
+  };
+
   return (
     <ParallaxScrollView
       headerBackgroundColor={{ light: '#A1CEDC', dark: '#1D3D47' }}
@@ -18,8 +28,9 @@ export default function HomeScreen() {
         />
       }>
       <ThemedView style={styles.titleContainer}>
-        <ThemedText type="title">Welcome!</ThemedText>
+        <ThemedText type="title">NavSense</ThemedText>
         <HelloWave />
+        <Button title="🧪 Test Navigation API" onPress={testNavigation} />
       </ThemedView>
       <ThemedView style={styles.stepContainer}>
         <ThemedText type="subtitle">Step 1: Try it</ThemedText>
