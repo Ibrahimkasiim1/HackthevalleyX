@@ -6,10 +6,12 @@ export const auth0Config = {
 
 // ✅ Auth0 configuration updated with new credentials from dashboard
 // 
-// IMPORTANT: Make sure these callback URLs are configured in your Auth0 dashboard:
-// - com.navsense://dev-i7n3hc6uvpflk5jr.ca.auth0.com/ios/com.navsense/callback
-// - com.navsense://dev-i7n3hc6uvpflk5jr.ca.auth0.com/android/com.navsense/callback
+// IMPORTANT: Update your Auth0 dashboard with these CORRECT callback URLs:
+// 
+// Allowed Callback URLs:
+// - com.navsense.app.auth0://dev-i7n3hc6uvpflk5jr.ca.auth0.com/ios/com.navsense.app/callback
+// - com.navsense.app.auth0://dev-i7n3hc6uvpflk5jr.ca.auth0.com/android/com.navsense.app/callback
 //
-// Logout URLs (same as callback URLs):
-// - com.navsense://dev-i7n3hc6uvpflk5jr.ca.auth0.com/ios/com.navsense/callback
-// - com.navsense://dev-i7n3hc6uvpflk5jr.ca.auth0.com/android/com.navsense/callback
+// Allowed Logout URLs:
+// - com.navsense.app.auth0://dev-i7n3hc6uvpflk5jr.ca.auth0.com/ios/com.navsense.app/callback
+// - com.navsense.app.auth0://dev-i7n3hc6uvpflk5jr.ca.auth0.com/android/com.navsense.app/callback

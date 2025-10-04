@@ -15,7 +15,7 @@
         "CFBundleURLTypes": [
           {
             "CFBundleURLName": "auth0",
-            "CFBundleURLSchemes": ["com.navsense"]
+            "CFBundleURLSchemes": ["com.navsense.app.auth0"]
           }
         ]
       }
@@ -35,7 +35,7 @@
           "action": "VIEW",
           "category": ["DEFAULT", "BROWSABLE"],
           "data": {
-            "scheme": "com.navsense"
+            "scheme": "com.navsense.app.auth0"
           }
         }
       ]

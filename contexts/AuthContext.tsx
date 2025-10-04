@@ -70,10 +70,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         picture: userInfo.picture,
       });
 
-      // Store user in MongoDB
-      await storeUserInDatabase(userInfo);
+      console.log('✅ Login successful!', userInfo);
     } catch (error) {
-      console.error('Login failed:', error);
+      console.error('❌ Login failed:', error);
       throw error;
     } finally {
       setIsLoading(false);
@@ -86,8 +85,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       await auth0.webAuth.clearSession();
       await auth0.credentialsManager.clearCredentials();
       setUser(null);
+      console.log('✅ Logout successful!');
     } catch (error) {
-      console.error('Logout failed:', error);
+      console.error('❌ Logout failed:', error);
       throw error;
     } finally {
       setIsLoading(false);
@@ -101,29 +101,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     } catch (error) {
       console.error('Failed to get access token:', error);
       return null;
-    }
-  };
-
-  const storeUserInDatabase = async (userInfo: any) => {
-    try {
-      const response = await fetch('http://localhost:3000/api/auth/store-user', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          auth0Id: userInfo.sub,
-          email: userInfo.email,
-          name: userInfo.name,
-          picture: userInfo.picture,
-        }),
-      });
-
-      if (!response.ok) {
-        console.error('Failed to store user in database');
-      }
-    } catch (error) {
-      console.error('Error storing user in database:', error);
     }
   };
 

@@ -1,15 +1,9 @@
-import { Image } from 'expo-image';
-import { Alert, Platform, StyleSheet, TouchableOpacity } from 'react-native';
-
-import { HelloWave } from '@/components/hello-wave';
-import ParallaxScrollView from '@/components/parallax-scroll-view';
-import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
 import { useAuth } from '@/contexts/AuthContext';
-import { Link } from 'expo-router';
+import React from 'react';
+import { Alert, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 export default function HomeScreen() {
-  const { user, logout } = useAuth();
+  const { user, logout, isLoading } = useAuth();
 
   const handleLogout = async () => {
     Alert.alert(
@@ -34,120 +28,89 @@ export default function HomeScreen() {
   };
 
   return (
-    <ParallaxScrollView
-      headerBackgroundColor={{ light: '#A1CEDC', dark: '#1D3D47' }}
-      headerImage={
-        <Image
-          source={require('@/assets/images/partial-react-logo.png')}
-          style={styles.reactLogo}
-        />
-      }>
-      <ThemedView style={styles.titleContainer}>
-        <ThemedText type="title">Welcome{user?.name ? `, ${user.name}` : ''}!</ThemedText>
-        <HelloWave />
-      </ThemedView>
-      
-      {user && (
-        <ThemedView style={styles.userContainer}>
-          <ThemedText type="subtitle">User Info</ThemedText>
-          <ThemedText>Email: {user.email}</ThemedText>
-          {user.name && <ThemedText>Name: {user.name}</ThemedText>}
-          <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
-            <ThemedText style={styles.logoutText}>Logout</ThemedText>
-          </TouchableOpacity>
-        </ThemedView>
-      )}
+    <View style={styles.container}>
+      <View style={styles.header}>
+        <Text style={styles.title}>🎉 Welcome to NavSense!</Text>
+        <Text style={styles.subtitle}>You&apos;re successfully logged in with Auth0</Text>
+      </View>
 
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 1: Try it</ThemedText>
-        <ThemedText>
-          Edit <ThemedText type="defaultSemiBold">app/(tabs)/index.tsx</ThemedText> to see changes.
-          Press{' '}
-          <ThemedText type="defaultSemiBold">
-            {Platform.select({
-              ios: 'cmd + d',
-              android: 'cmd + m',
-              web: 'F12',
-            })}
-          </ThemedText>{' '}
-          to open developer tools.
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <Link href="/modal">
-          <Link.Trigger>
-            <ThemedText type="subtitle">Step 2: Explore</ThemedText>
-          </Link.Trigger>
-          <Link.Preview />
-          <Link.Menu>
-            <Link.MenuAction title="Action" icon="cube" onPress={() => alert('Action pressed')} />
-            <Link.MenuAction
-              title="Share"
-              icon="square.and.arrow.up"
-              onPress={() => alert('Share pressed')}
-            />
-            <Link.Menu title="More" icon="ellipsis">
-              <Link.MenuAction
-                title="Delete"
-                icon="trash"
-                destructive
-                onPress={() => alert('Delete pressed')}
-              />
-            </Link.Menu>
-          </Link.Menu>
-        </Link>
+      <View style={styles.userCard}>
+        <Text style={styles.cardTitle}>Your Profile</Text>
+        <Text style={styles.userInfo}>Name: {user?.name || 'Not provided'}</Text>
+        <Text style={styles.userInfo}>Email: {user?.email || 'Not provided'}</Text>
+        <Text style={styles.userInfo}>ID: {user?.id || 'Not provided'}</Text>
+      </View>
 
-        <ThemedText>
-          {`Tap the Explore tab to learn more about what's included in this starter app.`}
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 3: Get a fresh start</ThemedText>
-        <ThemedText>
-          {`When you're ready, run `}
-          <ThemedText type="defaultSemiBold">npm run reset-project</ThemedText> to get a fresh{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> directory. This will move the current{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> to{' '}
-          <ThemedText type="defaultSemiBold">app-example</ThemedText>.
-        </ThemedText>
-      </ThemedView>
-    </ParallaxScrollView>
+      <TouchableOpacity
+        style={styles.logoutButton}
+        onPress={handleLogout}
+        disabled={isLoading}
+      >
+        <Text style={styles.logoutButtonText}>
+          {isLoading ? 'Logging out...' : 'Logout'}
+        </Text>
+      </TouchableOpacity>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  titleContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
+  container: {
+    flex: 1,
+    backgroundColor: '#f5f5f5',
+    padding: 20,
+    justifyContent: 'center',
   },
-  stepContainer: {
-    gap: 8,
+  header: {
+    alignItems: 'center',
+    marginBottom: 40,
+  },
+  title: {
+    fontSize: 28,
+    fontWeight: 'bold',
+    color: '#333',
+    textAlign: 'center',
+    marginBottom: 10,
+  },
+  subtitle: {
+    fontSize: 16,
+    color: '#666',
+    textAlign: 'center',
+  },
+  userCard: {
+    backgroundColor: 'white',
+    padding: 20,
+    borderRadius: 10,
+    marginBottom: 30,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 3.84,
+    elevation: 5,
+  },
+  cardTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#333',
+    marginBottom: 15,
+  },
+  userInfo: {
+    fontSize: 16,
+    color: '#555',
     marginBottom: 8,
   },
-  userContainer: {
-    gap: 8,
-    marginBottom: 16,
-    padding: 16,
-    borderRadius: 8,
-    backgroundColor: 'rgba(0, 122, 255, 0.1)',
-  },
   logoutButton: {
-    backgroundColor: '#ff3b30',
-    padding: 12,
+    backgroundColor: '#dc3545',
+    padding: 15,
     borderRadius: 8,
     alignItems: 'center',
-    marginTop: 8,
   },
-  logoutText: {
+  logoutButtonText: {
     color: 'white',
-    fontWeight: '600',
-  },
-  reactLogo: {
-    height: 178,
-    width: 290,
-    bottom: 0,
-    left: 0,
-    position: 'absolute',
+    fontSize: 16,
+    fontWeight: 'bold',
   },
 });
