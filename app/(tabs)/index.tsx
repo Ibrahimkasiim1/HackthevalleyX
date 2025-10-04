@@ -3,8 +3,7 @@ import { ThemedView } from '@/components/themed-view';
 import { getRoute } from '@/services/navigation';
 import * as Location from 'expo-location';
 import { useEffect, useState } from 'react';
-import { Alert, Dimensions, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
-import { GooglePlacesAutocomplete } from 'react-native-google-places-autocomplete';
+import { Alert, Dimensions, ScrollView, StyleSheet, TextInput, TouchableOpacity, View } from 'react-native';
 import MapView, { Marker, Polyline } from 'react-native-maps';
 
 const { width, height } = Dimensions.get('window');
@@ -365,118 +364,24 @@ export default function HomeScreen() {
             {/* Origin Input */}
             <ThemedView style={styles.inputContainer}>
               <ThemedText style={styles.inputLabel}>📍 From Location</ThemedText>
-              <GooglePlacesAutocomplete
-                placeholder="Current location (tap to change)"
-                onPress={(data, details = null) => {
-                  setOrigin(data.description);
-                }}
-                query={{
-                  key: 'YOUR_GOOGLE_PLACES_API_KEY', // Get from https://console.cloud.google.com
-                  language: 'en',
-                  components: 'country:ca', // Bias to Canada
-                }}
-                styles={{
-                  textInputContainer: {
-                    backgroundColor: '#f8f9fa',
-                    borderRadius: 12,
-                    paddingHorizontal: 0,
-                    borderTopWidth: 0,
-                    borderBottomWidth: 0,
-                  },
-                  textInput: {
-                    height: 48,
-                    color: '#333',
-                    fontSize: 16,
-                    backgroundColor: 'transparent',
-                    paddingHorizontal: 16,
-                  },
-                  listView: {
-                    backgroundColor: 'white',
-                    borderRadius: 8,
-                    elevation: 3,
-                    shadowColor: '#000',
-                    shadowOpacity: 0.1,
-                    shadowRadius: 4,
-                    shadowOffset: { width: 0, height: 2 },
-                    maxHeight: 150,
-                  },
-                  row: {
-                    backgroundColor: 'white',
-                    padding: 13,
-                    minHeight: 44,
-                    flexDirection: 'row',
-                  },
-                  separator: {
-                    height: 0.5,
-                    backgroundColor: '#e0e0e0',
-                  },
-                }}
-                textInputProps={{
-                  value: origin,
-                  onChangeText: setOrigin,
-                }}
-                currentLocation={true}
-                currentLocationLabel="📍 Use Current Location"
-                nearbyPlacesAPI="GooglePlacesSearch"
-                debounce={300}
+              <TextInput
+                style={styles.input}
+                placeholder="From (optional - uses current location)"
+                value={origin}
+                onChangeText={setOrigin}
+                placeholderTextColor="#999"
               />
             </ThemedView>
 
             {/* Destination Input */}
             <ThemedView style={styles.inputContainer}>
               <ThemedText style={styles.inputLabel}>🎯 To Destination *</ThemedText>
-              <GooglePlacesAutocomplete
+              <TextInput
+                style={styles.input}
                 placeholder="Enter destination..."
-                onPress={(data, details = null) => {
-                  setDestination(data.description);
-                }}
-                query={{
-                  key: 'YOUR_GOOGLE_PLACES_API_KEY', // Get from https://console.cloud.google.com
-                  language: 'en',
-                  components: 'country:ca', // Bias to Canada
-                }}
-                styles={{
-                  textInputContainer: {
-                    backgroundColor: '#f8f9fa',
-                    borderRadius: 12,
-                    paddingHorizontal: 0,
-                    borderTopWidth: 0,
-                    borderBottomWidth: 0,
-                  },
-                  textInput: {
-                    height: 48,
-                    color: '#333',
-                    fontSize: 16,
-                    backgroundColor: 'transparent',
-                    paddingHorizontal: 16,
-                  },
-                  listView: {
-                    backgroundColor: 'white',
-                    borderRadius: 8,
-                    elevation: 3,
-                    shadowColor: '#000',
-                    shadowOpacity: 0.1,
-                    shadowRadius: 4,
-                    shadowOffset: { width: 0, height: 2 },
-                    maxHeight: 200,
-                  },
-                  row: {
-                    backgroundColor: 'white',
-                    padding: 13,
-                    minHeight: 44,
-                    flexDirection: 'row',
-                  },
-                  separator: {
-                    height: 0.5,
-                    backgroundColor: '#e0e0e0',
-                  },
-                }}
-                textInputProps={{
-                  value: destination,
-                  onChangeText: setDestination,
-                }}
-                nearbyPlacesAPI="GooglePlacesSearch"
-                debounce={300}
+                value={destination}
+                onChangeText={setDestination}
+                placeholderTextColor="#999"
               />
             </ThemedView>
             
@@ -653,6 +558,15 @@ const styles = StyleSheet.create({
     color: '#2c3e50',
     marginBottom: 8,
     paddingLeft: 4,
+  },
+  input: {
+    backgroundColor: '#f8f9fa',
+    borderRadius: 12,
+    padding: 16,
+    fontSize: 16,
+    color: '#333',
+    borderWidth: 1,
+    borderColor: '#e0e0e0',
   },
   button: {
     borderRadius: 12,
