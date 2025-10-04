@@ -167,7 +167,14 @@ export default function HomeScreen() {
     setLoading(true);
     try {
       const fromLocation = origin.trim() || 'Current Location';
-      const route = await getRoute(fromLocation, destination, transportMode);
+      
+      // Pass current location for better place resolution
+      const userLocationForBias = currentLocation ? {
+        latitude: currentLocation.latitude,
+        longitude: currentLocation.longitude
+      } : undefined;
+      
+      const route = await getRoute(fromLocation, destination, transportMode, userLocationForBias);
       setRouteData(route);
       setIsNavigationActive(true);
       setCurrentStepIndex(0);
