@@ -4,11 +4,16 @@ import express from 'express';
 import morgan from 'morgan';
 import { v4 as uuidv4 } from 'uuid';
 import { z } from 'zod';
+import { connectDB } from './config/database.js';
+import authRoutes from './routes/auth.js';
 
 const app = express();
 app.use(express.json());
 app.use(cors());
 app.use(morgan('dev'));
+
+// Auth routes
+app.use('/api/auth', authRoutes);
 
 const PORT = process.env.PORT || 3000;
 const GOOGLE_API_KEY = process.env.GOOGLE_API_KEY;
@@ -169,6 +174,14 @@ app.get('/convo/route.build', async (req, res) => {
   }
 });
 
-app.listen(PORT, () => {
+app.listen(PORT, async () => {
   console.log(`NavSense server up on http://localhost:${PORT}`);
+  
+  // Initialize database connection
+  try {
+    await connectDB();
+    console.log('Database connected successfully');
+  } catch (error) {
+    console.error('Failed to connect to database:', error);
+  }
 });
