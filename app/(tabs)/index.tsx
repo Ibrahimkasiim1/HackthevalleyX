@@ -165,9 +165,15 @@ export default function HomeScreen() {
       return;
     }
 
+    if (!currentLocation) {
+      Alert.alert('Error', 'Please wait for location to be detected');
+      return;
+    }
+
     setLoading(true);
     try {
-      const fromLocation = origin.trim() || 'Current Location';
+      // Use actual coordinates when no origin is specified, instead of "Current Location" string
+      const fromLocation = origin.trim() || `${currentLocation.latitude},${currentLocation.longitude}`;
       
       // Pass current location for better place resolution
       const userLocationForBias = currentLocation ? {
