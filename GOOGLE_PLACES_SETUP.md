@@ -1,56 +1,52 @@
-# 🔑 Google Places API Setup
+# 🔑 Google Places API Setup Guide
 
-To enable the location autocomplete feature, you need to set up a Google Places API key.
-
-## Steps:
+## Quick Setup (5 minutes)
 
 ### 1. Get Google Places API Key
 1. Go to [Google Cloud Console](https://console.cloud.google.com/)
 2. Create a new project or select existing one
-3. Enable these APIs:
-   - **Places API** 
-   - **Directions API** (already used by server)
-   - **Geocoding API** (already used by server)
+3. Enable **Places API** (New Experience)
 4. Go to "Credentials" → "Create Credentials" → "API Key"
-5. Copy your API key
+5. **Copy your API key**
 
-### 2. Add API Key to Client
-Open `app/(tabs)/index.tsx` and replace both instances of:
+### 2. Add API Key to App
+Open `app/(tabs)/index.tsx` and find these two lines (around line 373 and 408):
 ```javascript
-key: 'YOUR_GOOGLE_PLACES_API_KEY'
-```
-With your actual API key:
-```javascript
-key: 'AIzaSyD8F6b5U6Q7RqX9nJ2k1H3L8M9P4N7s0V6' // Your real key here
+key: 'AIzaSyBvOkBwgGlbUiuS-oSma-iXiXHjUvJBFEY', // You need to replace this
 ```
 
-### 3. Security (Production)
-For production apps:
-- Restrict your API key to specific apps/domains
-- Use environment variables
-- Consider using a backend proxy for API calls
+Replace with your actual API key:
+```javascript
+key: 'AIzaSyD8F6b5U6Q7RqX9nJ2k1H3L8M9P4N7s0V6', // Your real key here
+```
 
-## What's New? ✨
+### 3. Test the Autocomplete
+1. Start the app: `npm start`
+2. Type in the destination field
+3. You should see dropdown suggestions appear!
 
-### 🔍 Google Places Autocomplete
-- **Smart Search**: Type any location and get suggestions
-- **Canada Bias**: Results prioritized for Canadian locations
-- **Current Location**: Quick option to use GPS location
-- **Real-time**: Suggestions appear as you type
+## What You Get ✨
 
-### 🎨 Improved UI
-- **Better Spacing**: Less cramped, more readable layout
-- **Modern Design**: Card-based interface with shadows
-- **Clear Labels**: Each input has descriptive labels
-- **Visual Hierarchy**: Important elements stand out
+### 🔍 **Real Google Places Autocomplete**
+- Type "Tim Hortons" → See nearby Tim Hortons locations
+- Type "CN Tower" → Get the exact CN Tower
+- Type "UTSC" → Gets University of Toronto Scarborough Campus
+- **Canada-biased results** (no more Oregon!)
 
-### 🛠️ Enhanced Features
-- **Location Bias**: Server now uses your GPS for better place resolution
-- **Responsive**: Works great on different screen sizes
-- **Accessible**: Proper contrast and touch targets
+### 🎯 **Location Selection**
+- **Dropdown list** of real places
+- **Tap to select** the exact location you want
+- **No more guessing** which "Toronto" you mean
 
-## Testing
-1. Make sure server is running: `cd server && npm run dev`
-2. Start the app: `npm start`
-3. Try searching for "Tim Hortons" or "CN Tower"
-4. Notice how it suggests nearby locations first!
+### 🗺️ **Better Navigation**
+- Precise coordinates from Google
+- **Fixes the Oregon routing issue**
+- Works with your existing haptic system
+
+## Security Note 🔒
+For production apps, restrict your API key in Google Cloud Console to your specific app bundle ID.
+
+## Troubleshooting
+- **No suggestions?** Check your API key and internet connection
+- **Still going to Oregon?** Make sure you selected from the dropdown, not just typed
+- **Billing errors?** Google Places has a free tier with generous limits
