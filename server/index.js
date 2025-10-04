@@ -1,0 +1,172 @@
+import cors from 'cors';
+import 'dotenv/config';
+import express from 'express';
+import morgan from 'morgan';
+import { v4 as uuidv4 } from 'uuid';
+import { z } from 'zod';
+
+const app = express();
+app.use(express.json());
+app.use(cors());
+app.use(morgan('dev'));
+
+const PORT = process.env.PORT || 3000;
+const GOOGLE_API_KEY = process.env.GOOGLE_API_KEY;
+const PARTNER_TOKEN = process.env.PARTNER_TOKEN || 'devtoken';
+
+if (!GOOGLE_API_KEY) {
+  console.warn('[WARN] GOOGLE_API_KEY not set. Set it in .env before calling the endpoint.');
+}
+
+const RequestSchema = z.object({
+  // Natural language input (fallback)
+  text: z.string().min(1).optional(),
+  
+  // Explicit start/destination parameters
+  start: z.string().min(1).optional(),
+  destination: z.string().min(1).optional(),
+  
+  // Legacy support
+  origin: z.string().min(1).optional(),
+  
+  // User's current location for better place resolution
+  userLocation: z.object({ 
+    lat: z.number(), 
+    lng: z.number() 
+  }).optional(),
+  
+  // Transportation mode
+  mode: z.enum(['walking','driving','bicycling','transit']).default('walking')
+});
+
+const maneuverToSide = (m) => {
+  if (!m) return 'B';
+  const L = ['turn-left','turn-sharp-left','turn-slight-left','ramp-left','fork-left','keep-left','roundabout-left','uturn-left'];
+  const R = ['turn-right','turn-sharp-right','turn-slight-right','ramp-right','fork-right','keep-right','roundabout-right','uturn-right'];
+  if (L.includes(m)) return 'L';
+  if (R.includes(m)) return 'R';
+  return 'B';
+};
+
+async function gjson(url) {
+  const r = await fetch(url);
+  if (!r.ok) throw new Error(`Fetch failed ${r.status}`);
+  return r.json();
+}
+
+async function findPlace(query, near) {
+  const input = encodeURIComponent(query);
+  const fields = 'place_id,name,geometry/location,formatted_address';
+  let url = `https://maps.googleapis.com/maps/api/place/findplacefromtext/json?input=${input}&inputtype=textquery&fields=${fields}&key=${GOOGLE_API_KEY}`;
+  if (near) url += `&locationbias=circle:4000@${near.lat},${near.lng}`;
+  const fp = await gjson(url);
+  if (fp.candidates?.length) {
+    const c = fp.candidates[0];
+    return {
+      name: c.name || c.formatted_address,
+      placeId: c.place_id,
+      lat: c.geometry.location.lat,
+      lng: c.geometry.location.lng,
+      address: c.formatted_address
+    };
+  }
+  throw new Error(`No place found for "${query}"`);
+}
+
+app.get('/health', (req, res) => {
+  res.json({ ok: true });
+});
+
+app.post('/convo/route.build', async (req, res) => {
+  try {
+    // simple token auth
+    if ((req.query.token || '') !== PARTNER_TOKEN) {
+      return res.status(401).json({ error: 'unauthorized' });
+    }
+    const parsed = RequestSchema.safeParse(req.body || {});
+    if (!parsed.success) {
+      return res.status(400).json({ error: 'bad_request', issues: parsed.error.issues });
+    }
+    const { text, start, origin, destination, userLocation, mode } = parsed.data;
+    
+    // Check if we have enough parameters
+    if (!text && !start && !origin && !destination) {
+      return res.status(400).json({ error: 'Provide text, start/destination, or origin/destination' });
+    }
+
+    // Use 'start' parameter or fallback to 'origin'
+    let startLocation = start || origin;
+    let endLocation = destination;
+    
+    // Parse natural language text if explicit params not provided
+    if (text && !startLocation && !endLocation) {
+      const m = text.match(/from (.+) to (.+)/i);
+      if (m) { 
+        startLocation = m[1].trim(); 
+        endLocation = m[2].trim(); 
+      } else { 
+        endLocation = text.trim(); 
+      }
+    }
+
+    // Resolve start location
+    let O;
+    if (startLocation) {
+      O = await findPlace(startLocation, userLocation);
+    } else if (userLocation) {
+      O = { name: 'Current Location', lat: userLocation.lat, lng: userLocation.lng };
+    } else {
+      return res.status(400).json({ error: 'Missing start location or userLocation' });
+    }
+
+    // Resolve destination
+    if (!endLocation) {
+      return res.status(400).json({ error: 'Missing destination' });
+    }
+    const D = await findPlace(endLocation, O);
+
+    // directions
+    const originParam = O.placeId ? `place_id:${O.placeId}` : `${O.lat},${O.lng}`;
+    const destParam   = D.placeId ? `place_id:${D.placeId}` : `${D.lat},${D.lng}`;
+    const dirURL = `https://maps.googleapis.com/maps/api/directions/json?origin=${encodeURIComponent(originParam)}&destination=${encodeURIComponent(destParam)}&mode=${mode}&units=metric&key=${GOOGLE_API_KEY}`;
+    const dir = await gjson(dirURL);
+    if (dir.status !== 'OK') {
+      return res.status(502).json({ error: 'Directions failed', details: dir.status, msg: dir.error_message });
+    }
+    const route = dir.routes[0];
+    const leg = route.legs[0];
+
+    const steps = (leg.steps || []).map((s, i) => ({
+      i,
+      instructionHtml: s.html_instructions || '',
+      maneuver: s.maneuver || 'straight',
+      side: maneuverToSide(s.maneuver),
+      triggerAt: { lat: s.start_location.lat, lng: s.start_location.lng },
+      end: { lat: s.end_location.lat, lng: s.end_location.lng },
+      distanceMeters: s.distance?.value ?? 0
+    }));
+
+    const routeId = `rte_${uuidv4().slice(0,7)}`;
+    const etaISO = new Date(Date.now() + (leg.duration?.value ?? 0) * 1000).toISOString();
+
+    res.json({
+      routeId,
+      summary: {
+        originName: O.name,
+        destinationName: D.name,
+        distanceMeters: leg.distance?.value ?? 0,
+        durationSeconds: leg.duration?.value ?? 0,
+        eta: etaISO
+      },
+      polyline: { points: route.overview_polyline?.points ?? '' },
+      steps
+    });
+  } catch (e) {
+    // handle JSON errors cleanly
+    res.status(500).json({ error: 'server_error', message: e.message });
+  }
+});
+
+app.listen(PORT, () => {
+  console.log(`NavSense server up on http://localhost:${PORT}`);
+});
