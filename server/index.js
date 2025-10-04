@@ -79,8 +79,17 @@ app.get('/health', (req, res) => {
 
 app.post('/convo/route.build', async (req, res) => {
   try {
+    // Log incoming requests for debugging
+    console.log('🎯 Navigation request received:', {
+      timestamp: new Date().toISOString(),
+      body: req.body,
+      query: req.query,
+      userAgent: req.get('User-Agent')
+    });
+    
     // simple token auth
     if ((req.query.token || '') !== PARTNER_TOKEN) {
+      console.log('❌ Unauthorized request - wrong token');
       return res.status(401).json({ error: 'unauthorized' });
     }
     const parsed = RequestSchema.safeParse(req.body || {});
@@ -149,7 +158,7 @@ app.post('/convo/route.build', async (req, res) => {
     const routeId = `rte_${uuidv4().slice(0,7)}`;
     const etaISO = new Date(Date.now() + (leg.duration?.value ?? 0) * 1000).toISOString();
 
-    res.json({
+    const response = {
       routeId,
       summary: {
         originName: O.name,
@@ -160,9 +169,20 @@ app.post('/convo/route.build', async (req, res) => {
       },
       polyline: { points: route.overview_polyline?.points ?? '' },
       steps
+    };
+    
+    console.log('✅ Route calculated successfully:', {
+      routeId,
+      from: O.name,
+      to: D.name,
+      distance: `${Math.round((leg.distance?.value ?? 0) / 1000)}km`,
+      duration: `${Math.round((leg.duration?.value ?? 0) / 60)}min`,
+      steps: steps.length
     });
+    
+    res.json(response);
   } catch (e) {
-    // handle JSON errors cleanly
+    console.log('❌ Error processing route:', e.message);
     res.status(500).json({ error: 'server_error', message: e.message });
   }
 });
