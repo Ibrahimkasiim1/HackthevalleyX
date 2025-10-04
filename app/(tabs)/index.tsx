@@ -3,7 +3,7 @@ import { ThemedView } from '@/components/themed-view';
 import { getRoute } from '@/services/navigation';
 import * as Location from 'expo-location';
 import { useEffect, useState } from 'react';
-import { Alert, Dimensions, StyleSheet, TextInput, TouchableOpacity, View } from 'react-native';
+import { Alert, Dimensions, ScrollView, StyleSheet, TextInput, TouchableOpacity, View } from 'react-native';
 import MapView, { Marker, Polyline } from 'react-native-maps';
 
 const { width, height } = Dimensions.get('window');
@@ -298,26 +298,30 @@ export default function HomeScreen() {
             />
             
             {/* Route visualization */}
-            {routeData && (
+            {routeData && routeData.summary && (
               <>
-                <Marker
-                  coordinate={{ 
-                    latitude: routeData.summary.startLocation.latitude, 
-                    longitude: routeData.summary.startLocation.longitude 
-                  }}
-                  title={routeData.summary.originName}
-                  description="Start point"
-                  pinColor="green"
-                />
-                <Marker
-                  coordinate={{ 
-                    latitude: routeData.summary.endLocation.latitude, 
-                    longitude: routeData.summary.endLocation.longitude 
-                  }}
-                  title={routeData.summary.destinationName}
-                  description="Destination"
-                  pinColor="red"
-                />
+                {routeData.summary.startLocation && (
+                  <Marker
+                    coordinate={{ 
+                      latitude: routeData.summary.startLocation.latitude, 
+                      longitude: routeData.summary.startLocation.longitude 
+                    }}
+                    title={routeData.summary.originName || "Start"}
+                    description="Start point"
+                    pinColor="green"
+                  />
+                )}
+                {routeData.summary.endLocation && (
+                  <Marker
+                    coordinate={{ 
+                      latitude: routeData.summary.endLocation.latitude, 
+                      longitude: routeData.summary.endLocation.longitude 
+                    }}
+                    title={routeData.summary.destinationName || "Destination"}
+                    description="Destination"
+                    pinColor="red"
+                  />
+                )}
                 <Polyline
                   coordinates={getPolylineCoordinates()}
                   strokeColor="#007AFF"
@@ -333,8 +337,12 @@ export default function HomeScreen() {
         )}
       </View>
 
-      {/* Navigation Controls */}
-      <ThemedView style={styles.controlsContainer}>
+      {/* Scrollable Navigation Controls */}
+      <ScrollView 
+        style={styles.scrollContainer}
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+      >
         <ThemedText type="title" style={styles.title}>🧭 NavSense</ThemedText>
         
         {!isNavigationActive ? (
@@ -426,17 +434,17 @@ export default function HomeScreen() {
             <ThemedView style={styles.statusRow}>
               <ThemedText style={styles.statusLabel}>📍 Navigation Step:</ThemedText>
               <ThemedText style={styles.statusValue}>
-                {currentStepIndex + 1} of {routeData.steps.length}
+                {currentStepIndex + 1} of {routeData.steps ? routeData.steps.length : 0}
               </ThemedText>
             </ThemedView>
             
             {/* Next Turn Command */}
-            {routeData.steps[currentStepIndex] && (
+            {routeData.steps && routeData.steps[currentStepIndex] && (
               <ThemedView style={styles.nextTurnContainer}>
                 <ThemedText style={styles.nextTurnLabel}>🎮 Next Haptic Command:</ThemedText>
                 <ThemedView style={styles.nextTurnCommand}>
                   <ThemedText style={styles.nextTurnText}>
-                    [{routeData.steps[currentStepIndex].side}] {routeData.steps[currentStepIndex].instructionHtml.replace(/<[^>]*>/g, '').slice(0, 60)}...
+                    [{routeData.steps[currentStepIndex].side || 'B'}] {routeData.steps[currentStepIndex].instructionHtml ? routeData.steps[currentStepIndex].instructionHtml.replace(/<[^>]*>/g, '').slice(0, 60) : 'Continue straight'}...
                   </ThemedText>
                 </ThemedView>
               </ThemedView>
@@ -451,31 +459,31 @@ export default function HomeScreen() {
           </ThemedView>
         )}
 
-        {routeData && (
+        {routeData && routeData.summary && (
           <ThemedView style={styles.routeInfo}>
             <ThemedText type="subtitle">📍 Active Route</ThemedText>
             <ThemedText style={styles.routeDetail}>
-              {routeData.summary.originName} → {routeData.summary.destinationName}
+              {routeData.summary.originName || "Start"} → {routeData.summary.destinationName || "Destination"}
             </ThemedText>
             <ThemedText style={styles.routeDetail}>
-              {(routeData.summary.distanceMeters / 1000).toFixed(1)} km • {Math.round(routeData.summary.durationSeconds / 60)} min
+              {routeData.summary.distanceMeters ? (routeData.summary.distanceMeters / 1000).toFixed(1) : "0"} km • {routeData.summary.durationSeconds ? Math.round(routeData.summary.durationSeconds / 60) : "0"} min
             </ThemedText>
             
             {/* Haptic Steps Preview */}
             <ThemedView style={styles.hapticPreview}>
               <ThemedText style={styles.hapticTitle}>� Upcoming Haptic Commands:</ThemedText>
-              {routeData.steps.slice(0, 3).map((step: any, index: number) => (
+              {routeData.steps && routeData.steps.length > 0 && routeData.steps.slice(0, 3).map((step: any, index: number) => (
                 <ThemedView key={index} style={styles.hapticStep}>
-                  <ThemedText style={styles.hapticCommand}>[{step.side}]</ThemedText>
+                  <ThemedText style={styles.hapticCommand}>[{step.side || 'B'}]</ThemedText>
                   <ThemedText style={styles.hapticText}>
-                    {step.instructionHtml.replace(/<[^>]*>/g, '').slice(0, 50)}...
+                    {step.instructionHtml ? step.instructionHtml.replace(/<[^>]*>/g, '').slice(0, 50) : 'Continue straight'}...
                   </ThemedText>
                 </ThemedView>
               ))}
             </ThemedView>
           </ThemedView>
         )}
-      </ThemedView>
+      </ScrollView>
     </ThemedView>
   );
 }
@@ -485,7 +493,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   mapContainer: {
-    height: height * 0.6, // 60% of screen height
+    height: height * 0.45, // Reduced to 45% of screen height for better balance
     width: '100%',
   },
   map: {
@@ -497,17 +505,21 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     backgroundColor: 'rgba(0,0,0,0.05)',
   },
-  controlsContainer: {
+  scrollContainer: {
     flex: 1,
-    padding: 20,
     backgroundColor: '#fff',
+  },
+  scrollContent: {
+    padding: 16,
+    paddingBottom: 20,
   },
   title: {
     textAlign: 'center',
-    marginBottom: 20,
+    marginBottom: 16,
+    fontSize: 24,
   },
   inputSection: {
-    marginBottom: 20,
+    marginBottom: 16,
   },
   input: {
     borderWidth: 1,
@@ -520,7 +532,7 @@ const styles = StyleSheet.create({
   },
   button: {
     borderRadius: 8,
-    padding: 15,
+    padding: 12,
     alignItems: 'center',
   },
   startButton: {
@@ -535,68 +547,68 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
   },
   activeNavigation: {
-    marginBottom: 20,
+    marginBottom: 16,
   },
   routeInfo: {
-    padding: 15,
+    padding: 12,
     backgroundColor: 'rgba(0,122,255,0.1)',
     borderRadius: 10,
-    marginBottom: 20,
+    marginBottom: 16,
   },
   routeDetail: {
     marginVertical: 2,
-    fontSize: 16,
+    fontSize: 14,
   },
   hapticPreview: {
-    marginTop: 15,
-    paddingTop: 15,
+    marginTop: 12,
+    paddingTop: 12,
     borderTopWidth: 1,
     borderTopColor: 'rgba(0,0,0,0.1)',
   },
   hapticTitle: {
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: 'bold',
-    marginBottom: 10,
+    marginBottom: 8,
     color: '#007AFF',
   },
   hapticStep: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginVertical: 5,
-    paddingVertical: 3,
+    marginVertical: 4,
+    paddingVertical: 2,
   },
   hapticCommand: {
-    fontSize: 14,
+    fontSize: 12,
     fontWeight: 'bold',
     color: '#007AFF',
     backgroundColor: 'rgba(0,122,255,0.2)',
-    padding: 6,
+    padding: 4,
     borderRadius: 4,
-    marginRight: 10,
-    minWidth: 35,
+    marginRight: 8,
+    minWidth: 30,
     textAlign: 'center',
   },
   hapticText: {
-    fontSize: 12,
+    fontSize: 11,
     flex: 1,
     color: '#666',
   },
   modeSection: {
-    marginBottom: 20,
+    marginBottom: 16,
   },
   modeTitle: {
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: 'bold',
-    marginBottom: 10,
+    marginBottom: 8,
     color: '#333',
   },
   modeButtons: {
     flexDirection: 'row',
-    gap: 10,
+    gap: 8,
   },
   modeButton: {
     flex: 1,
-    padding: 12,
+    padding: 10,
     borderRadius: 8,
     borderWidth: 2,
     borderColor: '#ddd',
@@ -608,7 +620,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(0,122,255,0.1)',
   },
   modeButtonText: {
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: '600',
     color: '#666',
   },
@@ -672,66 +684,66 @@ const styles = StyleSheet.create({
   navigationStatus: {
     backgroundColor: 'rgba(0,200,0,0.1)',
     borderRadius: 10,
-    padding: 15,
-    marginBottom: 15,
+    padding: 12,
+    marginBottom: 12,
     borderWidth: 1,
     borderColor: 'rgba(0,200,0,0.3)',
   },
   statusTitle: {
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: 'bold',
     color: '#00AA00',
-    marginBottom: 12,
+    marginBottom: 10,
     textAlign: 'center',
   },
   statusRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 8,
-    paddingVertical: 4,
+    marginBottom: 6,
+    paddingVertical: 3,
   },
   statusLabel: {
-    fontSize: 14,
+    fontSize: 13,
     color: '#333',
     flex: 1,
   },
   statusValue: {
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: 'bold',
     color: '#007AFF',
   },
   nextTurnContainer: {
-    marginTop: 10,
-    paddingTop: 10,
+    marginTop: 8,
+    paddingTop: 8,
     borderTopWidth: 1,
     borderTopColor: 'rgba(0,0,0,0.1)',
   },
   nextTurnLabel: {
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: 'bold',
     color: '#FF6B35',
-    marginBottom: 8,
+    marginBottom: 6,
   },
   nextTurnCommand: {
     backgroundColor: 'rgba(255,107,53,0.1)',
     borderRadius: 8,
-    padding: 10,
+    padding: 8,
   },
   nextTurnText: {
-    fontSize: 13,
+    fontSize: 12,
     color: '#FF6B35',
     fontWeight: '600',
   },
   gpsIndicator: {
-    marginTop: 12,
-    paddingTop: 8,
+    marginTop: 10,
+    paddingTop: 6,
     borderTopWidth: 1,
     borderTopColor: 'rgba(0,0,0,0.1)',
     alignItems: 'center',
   },
   gpsIndicatorText: {
-    fontSize: 12,
+    fontSize: 11,
     color: '#00AA00',
     fontWeight: 'bold',
   },
