@@ -17,6 +17,9 @@ export default function HomeScreen() {
   const [isNavigationActive, setIsNavigationActive] = useState(false);
   const [transportMode, setTransportMode] = useState<'walking' | 'transit'>('walking');
   const [locationSubscription, setLocationSubscription] = useState<any>(null);
+  const [currentStepIndex, setCurrentStepIndex] = useState(0);
+  const [hapticNotification, setHapticNotification] = useState<{visible: boolean, message: string, command: string}>({visible: false, message: '', command: ''});
+  const [distanceToNextTurn, setDistanceToNextTurn] = useState<number>(0);
 
   // Request location permissions on component mount
   useEffect(() => {
@@ -71,6 +74,11 @@ export default function HomeScreen() {
           
           setCurrentLocation(newLocation);
           console.log('📍 Location updated:', location.coords.latitude, location.coords.longitude);
+          
+          // Check if approaching a turn during active navigation
+          if (isNavigationActive) {
+            checkTurnProximity(location.coords.latitude, location.coords.longitude);
+          }
         }
       );
       
@@ -90,6 +98,66 @@ export default function HomeScreen() {
     }
   };
 
+  // Calculate distance between two points in meters
+  const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: number) => {
+    const R = 6371e3; // Earth's radius in meters
+    const φ1 = lat1 * Math.PI/180;
+    const φ2 = lat2 * Math.PI/180;
+    const Δφ = (lat2-lat1) * Math.PI/180;
+    const Δλ = (lon2-lon1) * Math.PI/180;
+
+    const a = Math.sin(Δφ/2) * Math.sin(Δφ/2) +
+              Math.cos(φ1) * Math.cos(φ2) *
+              Math.sin(Δλ/2) * Math.sin(Δλ/2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+
+    return R * c; // Distance in meters
+  };
+
+  // Check if user is approaching a turn and trigger haptic notification
+  const checkTurnProximity = (userLat: number, userLon: number) => {
+    if (!routeData || !routeData.steps || currentStepIndex >= routeData.steps.length) return;
+    
+    const currentStep = routeData.steps[currentStepIndex];
+    if (!currentStep) return;
+
+    const distance = calculateDistance(
+      userLat, userLon,
+      currentStep.triggerAt.lat, currentStep.triggerAt.lng
+    );
+    
+    setDistanceToNextTurn(Math.round(distance));
+
+    // Trigger haptic notification when within 30 meters of turn
+    if (distance < 30 && !hapticNotification.visible) {
+      const instruction = currentStep.instructionHtml.replace(/<[^>]*>/g, '');
+      showHapticNotification(currentStep.side, instruction);
+      
+      // Move to next step after triggering
+      setTimeout(() => {
+        if (currentStepIndex < routeData.steps.length - 1) {
+          setCurrentStepIndex(currentStepIndex + 1);
+        }
+      }, 5000);
+    }
+  };
+
+  // Show haptic notification popup
+  const showHapticNotification = (command: string, instruction: string) => {
+    setHapticNotification({
+      visible: true,
+      message: instruction,
+      command: command
+    });
+    
+    console.log(`🎮 HAPTIC TRIGGER: [${command}] ${instruction}`);
+    
+    // Auto-hide after 4 seconds
+    setTimeout(() => {
+      setHapticNotification({visible: false, message: '', command: ''});
+    }, 4000);
+  };
+
   const startNavigation = async () => {
     if (!destination.trim()) {
       Alert.alert('Error', 'Please enter a destination');
@@ -102,6 +170,8 @@ export default function HomeScreen() {
       const route = await getRoute(fromLocation, destination, transportMode);
       setRouteData(route);
       setIsNavigationActive(true);
+      setCurrentStepIndex(0);
+      setDistanceToNextTurn(0);
       
       // Start real-time GPS tracking
       await startLocationTracking();
@@ -120,6 +190,9 @@ export default function HomeScreen() {
   const stopNavigation = () => {
     setIsNavigationActive(false);
     setRouteData(null);
+    setCurrentStepIndex(0);
+    setDistanceToNextTurn(0);
+    setHapticNotification({visible: false, message: '', command: ''});
     
     // Stop real-time GPS tracking
     stopLocationTracking();
