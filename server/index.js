@@ -77,7 +77,7 @@ app.get('/health', (req, res) => {
   res.json({ ok: true });
 });
 
-app.post('/convo/route.build', async (req, res) => {
+app.get('/convo/route.build', async (req, res) => {
   try {
     // Log incoming requests for debugging
     console.log('🎯 Navigation request received:', {
