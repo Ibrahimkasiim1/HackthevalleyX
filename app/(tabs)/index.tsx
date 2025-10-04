@@ -409,6 +409,48 @@ export default function HomeScreen() {
           </ThemedView>
         )}
 
+        {/* Navigation Status Display */}
+        {isNavigationActive && routeData && (
+          <ThemedView style={styles.navigationStatus}>
+            <ThemedText style={styles.statusTitle}>🧭 Navigation Status</ThemedText>
+            
+            {/* Distance to Next Turn */}
+            <ThemedView style={styles.statusRow}>
+              <ThemedText style={styles.statusLabel}>📏 Distance to Next Turn:</ThemedText>
+              <ThemedText style={styles.statusValue}>
+                {distanceToNextTurn > 0 ? `${distanceToNextTurn}m` : 'Calculating...'}
+              </ThemedText>
+            </ThemedView>
+            
+            {/* Current Step Progress */}
+            <ThemedView style={styles.statusRow}>
+              <ThemedText style={styles.statusLabel}>📍 Navigation Step:</ThemedText>
+              <ThemedText style={styles.statusValue}>
+                {currentStepIndex + 1} of {routeData.steps.length}
+              </ThemedText>
+            </ThemedView>
+            
+            {/* Next Turn Command */}
+            {routeData.steps[currentStepIndex] && (
+              <ThemedView style={styles.nextTurnContainer}>
+                <ThemedText style={styles.nextTurnLabel}>🎮 Next Haptic Command:</ThemedText>
+                <ThemedView style={styles.nextTurnCommand}>
+                  <ThemedText style={styles.nextTurnText}>
+                    [{routeData.steps[currentStepIndex].side}] {routeData.steps[currentStepIndex].instructionHtml.replace(/<[^>]*>/g, '').slice(0, 60)}...
+                  </ThemedText>
+                </ThemedView>
+              </ThemedView>
+            )}
+            
+            {/* GPS Tracking Indicator */}
+            <ThemedView style={styles.gpsIndicator}>
+              <ThemedText style={styles.gpsIndicatorText}>
+                🛰️ Real-time GPS Tracking Active
+              </ThemedText>
+            </ThemedView>
+          </ThemedView>
+        )}
+
         {routeData && (
           <ThemedView style={styles.routeInfo}>
             <ThemedText type="subtitle">📍 Active Route</ThemedText>
@@ -625,6 +667,72 @@ const styles = StyleSheet.create({
   hapticIndicatorText: {
     fontSize: 12,
     color: '#007AFF',
+    fontWeight: 'bold',
+  },
+  navigationStatus: {
+    backgroundColor: 'rgba(0,200,0,0.1)',
+    borderRadius: 10,
+    padding: 15,
+    marginBottom: 15,
+    borderWidth: 1,
+    borderColor: 'rgba(0,200,0,0.3)',
+  },
+  statusTitle: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#00AA00',
+    marginBottom: 12,
+    textAlign: 'center',
+  },
+  statusRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+    paddingVertical: 4,
+  },
+  statusLabel: {
+    fontSize: 14,
+    color: '#333',
+    flex: 1,
+  },
+  statusValue: {
+    fontSize: 14,
+    fontWeight: 'bold',
+    color: '#007AFF',
+  },
+  nextTurnContainer: {
+    marginTop: 10,
+    paddingTop: 10,
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(0,0,0,0.1)',
+  },
+  nextTurnLabel: {
+    fontSize: 14,
+    fontWeight: 'bold',
+    color: '#FF6B35',
+    marginBottom: 8,
+  },
+  nextTurnCommand: {
+    backgroundColor: 'rgba(255,107,53,0.1)',
+    borderRadius: 8,
+    padding: 10,
+  },
+  nextTurnText: {
+    fontSize: 13,
+    color: '#FF6B35',
+    fontWeight: '600',
+  },
+  gpsIndicator: {
+    marginTop: 12,
+    paddingTop: 8,
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(0,0,0,0.1)',
+    alignItems: 'center',
+  },
+  gpsIndicatorText: {
+    fontSize: 12,
+    color: '#00AA00',
     fontWeight: 'bold',
   },
 });
