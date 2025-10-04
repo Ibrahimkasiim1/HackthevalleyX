@@ -86,14 +86,21 @@ app.get('/places/autocomplete', async (req, res) => {
     }
 
     const input = req.query.input;
+    const lat = req.query.lat;
+    const lng = req.query.lng;
     const sessiontoken = req.query.sessiontoken || uuidv4();
     
     if (!input) {
       return res.status(400).json({ error: 'Missing input parameter' });
     }
 
-    // Call Google Places Autocomplete API
-    const url = `https://maps.googleapis.com/maps/api/place/autocomplete/json?input=${encodeURIComponent(input)}&key=${GOOGLE_API_KEY}&components=country:ca&language=en&sessiontoken=${sessiontoken}`;
+    // Build Google Places Autocomplete API URL with optional location bias
+    let url = `https://maps.googleapis.com/maps/api/place/autocomplete/json?input=${encodeURIComponent(input)}&key=${GOOGLE_API_KEY}&components=country:ca&language=en&sessiontoken=${sessiontoken}`;
+    
+    // Add location bias if coordinates are provided
+    if (lat && lng) {
+      url += `&location=${lat},${lng}&radius=50000`; // 50km radius
+    }
     
     const response = await fetch(url);
     const data = await response.json();

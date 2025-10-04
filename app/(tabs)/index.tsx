@@ -372,6 +372,10 @@ export default function HomeScreen() {
                 onPlaceSelected={(place) => {
                   setOrigin(place.description);
                 }}
+                userLocation={currentLocation ? {
+                  latitude: currentLocation.latitude,
+                  longitude: currentLocation.longitude
+                } : undefined}
               />
             </ThemedView>
 
@@ -385,6 +389,10 @@ export default function HomeScreen() {
                 onPlaceSelected={(place) => {
                   setDestination(place.description);
                 }}
+                userLocation={currentLocation ? {
+                  latitude: currentLocation.latitude,
+                  longitude: currentLocation.longitude
+                } : undefined}
               />
             </ThemedView>
             

@@ -12,6 +12,10 @@ interface SecurePlacesAutocompleteProps {
   onChangeText: (text: string) => void;
   onPlaceSelected: (place: Place) => void;
   style?: any;
+  userLocation?: {
+    latitude: number;
+    longitude: number;
+  };
 }
 
 export const SecurePlacesAutocomplete: React.FC<SecurePlacesAutocompleteProps> = ({
@@ -20,6 +24,7 @@ export const SecurePlacesAutocomplete: React.FC<SecurePlacesAutocompleteProps> =
   onChangeText,
   onPlaceSelected,
   style,
+  userLocation,
 }) => {
   const [suggestions, setSuggestions] = useState<Place[]>([]);
   const [loading, setLoading] = useState(false);
@@ -45,9 +50,14 @@ export const SecurePlacesAutocomplete: React.FC<SecurePlacesAutocompleteProps> =
     
     setLoading(true);
     try {
-      const response = await fetch(
-        `https://hackthevalleyx.onrender.com/places/autocomplete?token=supersecret&input=${encodeURIComponent(query)}`
-      );
+      let url = `https://hackthevalleyx.onrender.com/places/autocomplete?token=supersecret&input=${encodeURIComponent(query)}`;
+      
+      // Add location bias if user location is available
+      if (userLocation) {
+        url += `&lat=${userLocation.latitude}&lng=${userLocation.longitude}`;
+      }
+      
+      const response = await fetch(url);
       
       if (response.ok) {
         const data = await response.json();
