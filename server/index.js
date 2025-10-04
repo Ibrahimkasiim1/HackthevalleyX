@@ -96,6 +96,8 @@ app.get('/convo/route.build', async (req, res) => {
     const start = req.query.start;
     const destination = req.query.destination; 
     const mode = req.query.mode || 'walking';
+    const userLat = req.query.userLat ? parseFloat(req.query.userLat) : null;
+    const userLng = req.query.userLng ? parseFloat(req.query.userLng) : null;
     
     // Validate required parameters
     if (!start) {
@@ -112,9 +114,14 @@ app.get('/convo/route.build', async (req, res) => {
     let startLocation = start;
     let endLocation = destination;
 
-    // Resolve start and destination locations
-    const O = await findPlace(startLocation);
-    const D = await findPlace(endLocation, O);
+    // Create location bias object if user coordinates provided
+    const locationBias = (userLat && userLng) ? { lat: userLat, lng: userLng } : null;
+    
+    console.log('📍 Using location bias:', locationBias ? `${userLat},${userLng}` : 'None provided');
+
+    // Resolve start and destination locations with improved bias
+    const O = await findPlace(startLocation, locationBias);
+    const D = await findPlace(endLocation, locationBias || O);
 
     // directions
     const originParam = O.placeId ? `place_id:${O.placeId}` : `${O.lat},${O.lng}`;

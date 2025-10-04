@@ -3,7 +3,8 @@ import { ThemedView } from '@/components/themed-view';
 import { getRoute } from '@/services/navigation';
 import * as Location from 'expo-location';
 import { useEffect, useState } from 'react';
-import { Alert, Dimensions, ScrollView, StyleSheet, TextInput, TouchableOpacity, View } from 'react-native';
+import { Alert, Dimensions, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
+import { GooglePlacesAutocomplete } from 'react-native-google-places-autocomplete';
 import MapView, { Marker, Polyline } from 'react-native-maps';
 
 const { width, height } = Dimensions.get('window');
@@ -352,24 +353,136 @@ export default function HomeScreen() {
       >
         <ThemedText type="title" style={styles.title}>🧭 NavSense</ThemedText>
         
+        {/* API Key Notice */}
+        <ThemedView style={styles.apiNotice}>
+          <ThemedText style={styles.apiNoticeText}>
+            🔑 Replace 'YOUR_GOOGLE_PLACES_API_KEY' with your Google Places API key from Google Cloud Console
+          </ThemedText>
+        </ThemedView>
+        
         {!isNavigationActive ? (
           <ThemedView style={styles.inputSection}>
-            <TextInput
-              style={styles.input}
-              placeholder="From (optional - uses current location)"
-              value={origin}
-              onChangeText={setOrigin}
-            />
-            <TextInput
-              style={styles.input}
-              placeholder="To (destination)"
-              value={destination}
-              onChangeText={setDestination}
-            />
+            {/* Origin Input */}
+            <ThemedView style={styles.inputContainer}>
+              <ThemedText style={styles.inputLabel}>📍 From Location</ThemedText>
+              <GooglePlacesAutocomplete
+                placeholder="Current location (tap to change)"
+                onPress={(data, details = null) => {
+                  setOrigin(data.description);
+                }}
+                query={{
+                  key: 'YOUR_GOOGLE_PLACES_API_KEY', // Get from https://console.cloud.google.com
+                  language: 'en',
+                  components: 'country:ca', // Bias to Canada
+                }}
+                styles={{
+                  textInputContainer: {
+                    backgroundColor: '#f8f9fa',
+                    borderRadius: 12,
+                    paddingHorizontal: 0,
+                    borderTopWidth: 0,
+                    borderBottomWidth: 0,
+                  },
+                  textInput: {
+                    height: 48,
+                    color: '#333',
+                    fontSize: 16,
+                    backgroundColor: 'transparent',
+                    paddingHorizontal: 16,
+                  },
+                  listView: {
+                    backgroundColor: 'white',
+                    borderRadius: 8,
+                    elevation: 3,
+                    shadowColor: '#000',
+                    shadowOpacity: 0.1,
+                    shadowRadius: 4,
+                    shadowOffset: { width: 0, height: 2 },
+                    maxHeight: 150,
+                  },
+                  row: {
+                    backgroundColor: 'white',
+                    padding: 13,
+                    minHeight: 44,
+                    flexDirection: 'row',
+                  },
+                  separator: {
+                    height: 0.5,
+                    backgroundColor: '#e0e0e0',
+                  },
+                }}
+                textInputProps={{
+                  value: origin,
+                  onChangeText: setOrigin,
+                }}
+                currentLocation={true}
+                currentLocationLabel="📍 Use Current Location"
+                nearbyPlacesAPI="GooglePlacesSearch"
+                debounce={300}
+              />
+            </ThemedView>
+
+            {/* Destination Input */}
+            <ThemedView style={styles.inputContainer}>
+              <ThemedText style={styles.inputLabel}>🎯 To Destination *</ThemedText>
+              <GooglePlacesAutocomplete
+                placeholder="Enter destination..."
+                onPress={(data, details = null) => {
+                  setDestination(data.description);
+                }}
+                query={{
+                  key: 'YOUR_GOOGLE_PLACES_API_KEY', // Get from https://console.cloud.google.com
+                  language: 'en',
+                  components: 'country:ca', // Bias to Canada
+                }}
+                styles={{
+                  textInputContainer: {
+                    backgroundColor: '#f8f9fa',
+                    borderRadius: 12,
+                    paddingHorizontal: 0,
+                    borderTopWidth: 0,
+                    borderBottomWidth: 0,
+                  },
+                  textInput: {
+                    height: 48,
+                    color: '#333',
+                    fontSize: 16,
+                    backgroundColor: 'transparent',
+                    paddingHorizontal: 16,
+                  },
+                  listView: {
+                    backgroundColor: 'white',
+                    borderRadius: 8,
+                    elevation: 3,
+                    shadowColor: '#000',
+                    shadowOpacity: 0.1,
+                    shadowRadius: 4,
+                    shadowOffset: { width: 0, height: 2 },
+                    maxHeight: 200,
+                  },
+                  row: {
+                    backgroundColor: 'white',
+                    padding: 13,
+                    minHeight: 44,
+                    flexDirection: 'row',
+                  },
+                  separator: {
+                    height: 0.5,
+                    backgroundColor: '#e0e0e0',
+                  },
+                }}
+                textInputProps={{
+                  value: destination,
+                  onChangeText: setDestination,
+                }}
+                nearbyPlacesAPI="GooglePlacesSearch"
+                debounce={300}
+              />
+            </ThemedView>
             
             {/* Transportation Mode Selection */}
             <ThemedView style={styles.modeSection}>
-              <ThemedText style={styles.modeTitle}>🚶 Transportation Mode:</ThemedText>
+              <ThemedText style={styles.modeTitle}>🚶 Transportation Mode</ThemedText>
               <ThemedView style={styles.modeButtons}>
                 <TouchableOpacity
                   style={[
@@ -406,7 +519,7 @@ export default function HomeScreen() {
             <TouchableOpacity 
               style={[styles.button, styles.startButton]} 
               onPress={startNavigation}
-              disabled={loading}
+              disabled={loading || !destination.trim()}
             >
               <ThemedText style={styles.buttonText}>
                 {loading ? "⏳ Loading..." : "🚀 Start Navigation"}
@@ -498,9 +611,10 @@ export default function HomeScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    backgroundColor: '#f8f9fa',
   },
   mapContainer: {
-    height: height * 0.45, // Reduced to 45% of screen height for better balance
+    height: height * 0.4, // Better balance for autocomplete
     width: '100%',
   },
   map: {
@@ -514,125 +628,156 @@ const styles = StyleSheet.create({
   },
   scrollContainer: {
     flex: 1,
-    backgroundColor: '#fff',
+    backgroundColor: '#f8f9fa',
   },
   scrollContent: {
-    padding: 16,
-    paddingBottom: 20,
+    padding: 20,
+    paddingBottom: 30,
   },
   title: {
     textAlign: 'center',
-    marginBottom: 16,
-    fontSize: 24,
+    marginBottom: 24,
+    fontSize: 28,
+    fontWeight: 'bold',
+    color: '#2c3e50',
   },
   inputSection: {
-    marginBottom: 16,
+    marginBottom: 24,
   },
-  input: {
-    borderWidth: 1,
-    borderColor: '#ddd',
-    borderRadius: 8,
-    padding: 12,
-    marginBottom: 10,
+  inputContainer: {
+    marginBottom: 20,
+  },
+  inputLabel: {
     fontSize: 16,
-    backgroundColor: '#fff',
+    fontWeight: '600',
+    color: '#2c3e50',
+    marginBottom: 8,
+    paddingLeft: 4,
   },
   button: {
-    borderRadius: 8,
-    padding: 12,
+    borderRadius: 12,
+    padding: 16,
     alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
   },
   startButton: {
     backgroundColor: '#007AFF',
+    marginTop: 8,
   },
   stopButton: {
     backgroundColor: '#FF3B30',
   },
   buttonText: {
     color: '#fff',
-    fontSize: 16,
+    fontSize: 18,
     fontWeight: 'bold',
   },
   activeNavigation: {
-    marginBottom: 16,
+    marginBottom: 20,
   },
   routeInfo: {
-    padding: 12,
-    backgroundColor: 'rgba(0,122,255,0.1)',
-    borderRadius: 10,
-    marginBottom: 16,
+    padding: 16,
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    marginBottom: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+    borderLeftWidth: 4,
+    borderLeftColor: '#007AFF',
   },
   routeDetail: {
-    marginVertical: 2,
-    fontSize: 14,
+    marginVertical: 4,
+    fontSize: 15,
+    color: '#2c3e50',
+    lineHeight: 20,
   },
   hapticPreview: {
-    marginTop: 12,
-    paddingTop: 12,
+    marginTop: 16,
+    paddingTop: 16,
     borderTopWidth: 1,
     borderTopColor: 'rgba(0,0,0,0.1)',
   },
   hapticTitle: {
-    fontSize: 13,
+    fontSize: 15,
     fontWeight: 'bold',
-    marginBottom: 8,
+    marginBottom: 12,
     color: '#007AFF',
   },
   hapticStep: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginVertical: 4,
-    paddingVertical: 2,
+    marginVertical: 6,
+    paddingVertical: 4,
+    backgroundColor: 'rgba(0,122,255,0.05)',
+    borderRadius: 8,
+    paddingHorizontal: 8,
   },
   hapticCommand: {
-    fontSize: 12,
+    fontSize: 13,
     fontWeight: 'bold',
     color: '#007AFF',
     backgroundColor: 'rgba(0,122,255,0.2)',
-    padding: 4,
-    borderRadius: 4,
-    marginRight: 8,
-    minWidth: 30,
+    padding: 6,
+    borderRadius: 6,
+    marginRight: 10,
+    minWidth: 35,
     textAlign: 'center',
   },
   hapticText: {
-    fontSize: 11,
+    fontSize: 13,
     flex: 1,
-    color: '#666',
+    color: '#2c3e50',
+    lineHeight: 18,
   },
   modeSection: {
-    marginBottom: 16,
+    marginBottom: 20,
   },
   modeTitle: {
-    fontSize: 14,
-    fontWeight: 'bold',
-    marginBottom: 8,
-    color: '#333',
+    fontSize: 16,
+    fontWeight: '600',
+    marginBottom: 12,
+    color: '#2c3e50',
+    paddingLeft: 4,
   },
   modeButtons: {
     flexDirection: 'row',
-    gap: 8,
+    gap: 12,
   },
   modeButton: {
     flex: 1,
-    padding: 10,
-    borderRadius: 8,
+    padding: 14,
+    borderRadius: 12,
     borderWidth: 2,
-    borderColor: '#ddd',
-    backgroundColor: '#f5f5f5',
+    borderColor: '#e0e0e0',
+    backgroundColor: '#fff',
     alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+    elevation: 1,
   },
   modeButtonActive: {
     borderColor: '#007AFF',
     backgroundColor: 'rgba(0,122,255,0.1)',
+    shadowOpacity: 0.15,
+    elevation: 3,
   },
   modeButtonText: {
-    fontSize: 13,
+    fontSize: 15,
     fontWeight: '600',
     color: '#666',
   },
   modeButtonTextActive: {
     color: '#007AFF',
+    fontWeight: 'bold',
   },
   hapticPopupOverlay: {
     position: 'absolute',
@@ -640,118 +785,146 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: 0,
-    backgroundColor: 'rgba(0,0,0,0.3)',
+    backgroundColor: 'rgba(0,0,0,0.4)',
     justifyContent: 'center',
     alignItems: 'center',
     zIndex: 1000,
   },
   hapticPopup: {
     backgroundColor: '#fff',
-    borderRadius: 15,
-    padding: 25,
-    marginHorizontal: 20,
+    borderRadius: 20,
+    padding: 30,
+    marginHorizontal: 30,
     alignItems: 'center',
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
+    shadowOffset: { width: 0, height: 8 },
     shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 10,
+    shadowRadius: 12,
+    elevation: 15,
   },
   hapticCommandContainer: {
     backgroundColor: '#007AFF',
-    borderRadius: 25,
-    paddingVertical: 15,
-    paddingHorizontal: 30,
-    marginBottom: 15,
+    borderRadius: 30,
+    paddingVertical: 18,
+    paddingHorizontal: 35,
+    marginBottom: 20,
+    shadowColor: '#007AFF',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 8,
   },
   hapticPopupCommand: {
-    fontSize: 24,
+    fontSize: 26,
     fontWeight: 'bold',
     color: '#fff',
     textAlign: 'center',
   },
   hapticPopupMessage: {
-    fontSize: 16,
+    fontSize: 17,
     textAlign: 'center',
-    marginBottom: 15,
-    color: '#333',
-    lineHeight: 22,
+    marginBottom: 20,
+    color: '#2c3e50',
+    lineHeight: 24,
+    paddingHorizontal: 10,
   },
   hapticPopupIndicator: {
     backgroundColor: 'rgba(0,122,255,0.1)',
-    borderRadius: 20,
-    paddingVertical: 8,
-    paddingHorizontal: 15,
+    borderRadius: 25,
+    paddingVertical: 10,
+    paddingHorizontal: 20,
   },
   hapticIndicatorText: {
-    fontSize: 12,
+    fontSize: 13,
     color: '#007AFF',
     fontWeight: 'bold',
   },
   navigationStatus: {
-    backgroundColor: 'rgba(0,200,0,0.1)',
-    borderRadius: 10,
-    padding: 12,
-    marginBottom: 12,
-    borderWidth: 1,
-    borderColor: 'rgba(0,200,0,0.3)',
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 16,
+    borderLeftWidth: 4,
+    borderLeftColor: '#00AA00',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
   },
   statusTitle: {
-    fontSize: 14,
+    fontSize: 16,
     fontWeight: 'bold',
     color: '#00AA00',
-    marginBottom: 10,
+    marginBottom: 12,
     textAlign: 'center',
   },
   statusRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 6,
-    paddingVertical: 3,
+    marginBottom: 10,
+    paddingVertical: 6,
+    paddingHorizontal: 4,
   },
   statusLabel: {
-    fontSize: 13,
-    color: '#333',
+    fontSize: 14,
+    color: '#2c3e50',
     flex: 1,
+    fontWeight: '500',
   },
   statusValue: {
-    fontSize: 13,
+    fontSize: 14,
     fontWeight: 'bold',
     color: '#007AFF',
   },
   nextTurnContainer: {
-    marginTop: 8,
-    paddingTop: 8,
+    marginTop: 12,
+    paddingTop: 12,
     borderTopWidth: 1,
     borderTopColor: 'rgba(0,0,0,0.1)',
   },
   nextTurnLabel: {
-    fontSize: 13,
+    fontSize: 14,
     fontWeight: 'bold',
     color: '#FF6B35',
-    marginBottom: 6,
+    marginBottom: 8,
   },
   nextTurnCommand: {
     backgroundColor: 'rgba(255,107,53,0.1)',
-    borderRadius: 8,
-    padding: 8,
+    borderRadius: 10,
+    padding: 12,
   },
   nextTurnText: {
-    fontSize: 12,
+    fontSize: 13,
     color: '#FF6B35',
     fontWeight: '600',
+    lineHeight: 18,
   },
   gpsIndicator: {
-    marginTop: 10,
-    paddingTop: 6,
+    marginTop: 12,
+    paddingTop: 8,
     borderTopWidth: 1,
     borderTopColor: 'rgba(0,0,0,0.1)',
     alignItems: 'center',
   },
   gpsIndicatorText: {
-    fontSize: 11,
+    fontSize: 12,
     color: '#00AA00',
     fontWeight: 'bold',
+  },
+  apiNotice: {
+    backgroundColor: '#fff3cd',
+    borderLeftWidth: 4,
+    borderLeftColor: '#ffc107',
+    borderRadius: 8,
+    padding: 12,
+    marginBottom: 16,
+  },
+  apiNoticeText: {
+    color: '#856404',
+    fontSize: 13,
+    textAlign: 'center',
+    fontWeight: '500',
   },
 });
