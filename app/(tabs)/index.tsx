@@ -257,6 +257,29 @@ export default function HomeScreen() {
 
   return (
     <ThemedView style={styles.container}>
+      {/* Haptic Popup Notification */}
+      {hapticNotification.visible && (
+        <View style={styles.hapticPopupOverlay}>
+          <View style={styles.hapticPopup}>
+            <View style={styles.hapticCommandContainer}>
+              <ThemedText style={styles.hapticPopupCommand}>
+                {hapticNotification.command === 'L' && '⬅️ TURN LEFT'}
+                {hapticNotification.command === 'R' && '➡️ TURN RIGHT'}
+                {hapticNotification.command === 'B' && '⬆️ GO STRAIGHT'}
+              </ThemedText>
+            </View>
+            <ThemedText style={styles.hapticPopupMessage}>
+              {hapticNotification.message}
+            </ThemedText>
+            <View style={styles.hapticPopupIndicator}>
+              <ThemedText style={styles.hapticIndicatorText}>
+                🎮 HAPTIC COMMAND TRIGGERED
+              </ThemedText>
+            </View>
+          </View>
+        </View>
+      )}
+      
       {/* Map View */}
       <View style={styles.mapContainer}>
         {currentLocation ? (
@@ -549,5 +572,59 @@ const styles = StyleSheet.create({
   },
   modeButtonTextActive: {
     color: '#007AFF',
+  },
+  hapticPopupOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0,0,0,0.3)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 1000,
+  },
+  hapticPopup: {
+    backgroundColor: '#fff',
+    borderRadius: 15,
+    padding: 25,
+    marginHorizontal: 20,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 10,
+  },
+  hapticCommandContainer: {
+    backgroundColor: '#007AFF',
+    borderRadius: 25,
+    paddingVertical: 15,
+    paddingHorizontal: 30,
+    marginBottom: 15,
+  },
+  hapticPopupCommand: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#fff',
+    textAlign: 'center',
+  },
+  hapticPopupMessage: {
+    fontSize: 16,
+    textAlign: 'center',
+    marginBottom: 15,
+    color: '#333',
+    lineHeight: 22,
+  },
+  hapticPopupIndicator: {
+    backgroundColor: 'rgba(0,122,255,0.1)',
+    borderRadius: 20,
+    paddingVertical: 8,
+    paddingHorizontal: 15,
+  },
+  hapticIndicatorText: {
+    fontSize: 12,
+    color: '#007AFF',
+    fontWeight: 'bold',
   },
 });
