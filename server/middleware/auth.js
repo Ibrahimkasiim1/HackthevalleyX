@@ -1,6 +1,6 @@
 import jwt from 'jsonwebtoken';
 
-const JWT_SECRET = process.env.JWT_SECRET || 'your-jwt-secret-key-change-this-in-production';
+const JWT_SECRET = process.env.JWT_SECRET || 'NavSense_Development_JWT_Secret_Key_2025';
 
 export const authenticateJWT = (req, res, next) => {
   const authHeader = req.headers.authorization;
