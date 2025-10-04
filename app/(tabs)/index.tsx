@@ -15,6 +15,7 @@ export default function HomeScreen() {
   const [destination, setDestination] = useState('');
   const [origin, setOrigin] = useState('');
   const [isNavigationActive, setIsNavigationActive] = useState(false);
+  const [transportMode, setTransportMode] = useState<'walking' | 'transit'>('walking');
 
   // Request location permissions on component mount
   useEffect(() => {
@@ -59,10 +60,10 @@ export default function HomeScreen() {
     setLoading(true);
     try {
       const fromLocation = origin.trim() || 'Current Location';
-      const route = await getRoute(fromLocation, destination);
+      const route = await getRoute(fromLocation, destination, transportMode);
       setRouteData(route);
       setIsNavigationActive(true);
-      Alert.alert('Navigation Started!', `Route: ${route.summary.originName} → ${route.summary.destinationName}`);
+      Alert.alert('Navigation Started!', `${transportMode.toUpperCase()} Route: ${route.summary.originName} → ${route.summary.destinationName}`);
     } catch (error) {
       Alert.alert('Error', String(error));
     } finally {
@@ -197,6 +198,43 @@ export default function HomeScreen() {
               value={destination}
               onChangeText={setDestination}
             />
+            
+            {/* Transportation Mode Selection */}
+            <ThemedView style={styles.modeSection}>
+              <ThemedText style={styles.modeTitle}>🚶 Transportation Mode:</ThemedText>
+              <ThemedView style={styles.modeButtons}>
+                <TouchableOpacity
+                  style={[
+                    styles.modeButton,
+                    transportMode === 'walking' && styles.modeButtonActive
+                  ]}
+                  onPress={() => setTransportMode('walking')}
+                >
+                  <ThemedText style={[
+                    styles.modeButtonText,
+                    transportMode === 'walking' && styles.modeButtonTextActive
+                  ]}>
+                    🚶 Walking
+                  </ThemedText>
+                </TouchableOpacity>
+                
+                <TouchableOpacity
+                  style={[
+                    styles.modeButton,
+                    transportMode === 'transit' && styles.modeButtonActive
+                  ]}
+                  onPress={() => setTransportMode('transit')}
+                >
+                  <ThemedText style={[
+                    styles.modeButtonText,
+                    transportMode === 'transit' && styles.modeButtonTextActive
+                  ]}>
+                    🚌 Transit
+                  </ThemedText>
+                </TouchableOpacity>
+              </ThemedView>
+            </ThemedView>
+            
             <TouchableOpacity 
               style={[styles.button, styles.startButton]} 
               onPress={startNavigation}
@@ -347,5 +385,39 @@ const styles = StyleSheet.create({
     fontSize: 12,
     flex: 1,
     color: '#666',
+  },
+  modeSection: {
+    marginBottom: 20,
+  },
+  modeTitle: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    marginBottom: 10,
+    color: '#333',
+  },
+  modeButtons: {
+    flexDirection: 'row',
+    gap: 10,
+  },
+  modeButton: {
+    flex: 1,
+    padding: 12,
+    borderRadius: 8,
+    borderWidth: 2,
+    borderColor: '#ddd',
+    backgroundColor: '#f5f5f5',
+    alignItems: 'center',
+  },
+  modeButtonActive: {
+    borderColor: '#007AFF',
+    backgroundColor: 'rgba(0,122,255,0.1)',
+  },
+  modeButtonText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#666',
+  },
+  modeButtonTextActive: {
+    color: '#007AFF',
   },
 });
