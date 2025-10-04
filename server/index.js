@@ -77,6 +77,50 @@ app.get('/health', (req, res) => {
   res.json({ ok: true });
 });
 
+// Google Places Autocomplete Proxy Endpoint
+app.get('/places/autocomplete', async (req, res) => {
+  try {
+    // Simple token auth
+    if ((req.query.token || '') !== PARTNER_TOKEN) {
+      return res.status(401).json({ error: 'unauthorized' });
+    }
+
+    const input = req.query.input;
+    const sessiontoken = req.query.sessiontoken || uuidv4();
+    
+    if (!input) {
+      return res.status(400).json({ error: 'Missing input parameter' });
+    }
+
+    // Call Google Places Autocomplete API
+    const url = `https://maps.googleapis.com/maps/api/place/autocomplete/json?input=${encodeURIComponent(input)}&key=${GOOGLE_API_KEY}&components=country:ca&language=en&sessiontoken=${sessiontoken}`;
+    
+    const response = await fetch(url);
+    const data = await response.json();
+    
+    if (data.status !== 'OK' && data.status !== 'ZERO_RESULTS') {
+      console.error('Places API error:', data);
+      return res.status(500).json({ error: 'Places API error', details: data.status });
+    }
+
+    // Transform the response to match what the client expects
+    const suggestions = (data.predictions || []).map(prediction => ({
+      description: prediction.description,
+      place_id: prediction.place_id,
+      structured_formatting: prediction.structured_formatting,
+    }));
+
+    res.json({
+      predictions: suggestions,
+      status: data.status
+    });
+
+  } catch (error) {
+    console.error('Places autocomplete error:', error);
+    res.status(500).json({ error: 'server_error', message: error.message });
+  }
+});
+
 app.get('/convo/route.build', async (req, res) => {
   try {
     // Log incoming requests for debugging
