@@ -92,46 +92,28 @@ app.post('/convo/route.build', async (req, res) => {
       console.log('❌ Unauthorized request - wrong token');
       return res.status(401).json({ error: 'unauthorized' });
     }
-    const parsed = RequestSchema.safeParse(req.body || {});
-    if (!parsed.success) {
-      return res.status(400).json({ error: 'bad_request', issues: parsed.error.issues });
-    }
-    const { text, start, origin, destination, userLocation, mode } = parsed.data;
+    // Get parameters from URL query string
+    const start = req.query.start;
+    const destination = req.query.destination; 
+    const mode = req.query.mode || 'walking';
     
-    // Check if we have enough parameters
-    if (!text && !start && !origin && !destination) {
-      return res.status(400).json({ error: 'Provide text, start/destination, or origin/destination' });
+    // Validate required parameters
+    if (!start) {
+      return res.status(400).json({ error: 'Missing required parameter: start' });
+    }
+    if (!destination) {
+      return res.status(400).json({ error: 'Missing required parameter: destination' });
+    }
+    if (!['walking','driving','bicycling','transit'].includes(mode)) {
+      return res.status(400).json({ error: 'Invalid mode. Must be: walking, driving, bicycling, or transit' });
     }
 
-    // Use 'start' parameter or fallback to 'origin'
-    let startLocation = start || origin;
+    // Use the URL parameters directly
+    let startLocation = start;
     let endLocation = destination;
-    
-    // Parse natural language text if explicit params not provided
-    if (text && !startLocation && !endLocation) {
-      const m = text.match(/from (.+) to (.+)/i);
-      if (m) { 
-        startLocation = m[1].trim(); 
-        endLocation = m[2].trim(); 
-      } else { 
-        endLocation = text.trim(); 
-      }
-    }
 
-    // Resolve start location
-    let O;
-    if (startLocation) {
-      O = await findPlace(startLocation, userLocation);
-    } else if (userLocation) {
-      O = { name: 'Current Location', lat: userLocation.lat, lng: userLocation.lng };
-    } else {
-      return res.status(400).json({ error: 'Missing start location or userLocation' });
-    }
-
-    // Resolve destination
-    if (!endLocation) {
-      return res.status(400).json({ error: 'Missing destination' });
-    }
+    // Resolve start and destination locations
+    const O = await findPlace(startLocation);
     const D = await findPlace(endLocation, O);
 
     // directions
