@@ -160,20 +160,20 @@ export default function HomeScreen() {
   };
 
   const startNavigation = async () => {
+    if (!origin.trim()) {
+      Alert.alert('Error', 'Please enter a starting location');
+      return;
+    }
+    
     if (!destination.trim()) {
       Alert.alert('Error', 'Please enter a destination');
       return;
     }
 
-    if (!currentLocation) {
-      Alert.alert('Error', 'Please wait for location to be detected');
-      return;
-    }
-
     setLoading(true);
     try {
-      // Use special identifier when no origin is specified, let server handle current location
-      const fromLocation = origin.trim() || "USER_CURRENT_LOCATION";
+      // Use the specified origin location
+      const fromLocation = origin.trim();
       
       // Pass current location for better place resolution
       const userLocationForBias = currentLocation ? {
@@ -370,9 +370,9 @@ export default function HomeScreen() {
           <ThemedView style={styles.inputSection}>
             {/* Origin Input */}
             <ThemedView style={styles.inputContainer}>
-              <ThemedText style={styles.inputLabel}>📍 From Location</ThemedText>
+              <ThemedText style={styles.inputLabel}>📍 From Location *</ThemedText>
               <SecurePlacesAutocomplete
-                placeholder="From (optional - uses current location)"
+                placeholder="Enter starting location..."
                 value={origin}
                 onChangeText={setOrigin}
                 onPlaceSelected={(place) => {
@@ -441,7 +441,7 @@ export default function HomeScreen() {
             <TouchableOpacity 
               style={[styles.button, styles.startButton]} 
               onPress={startNavigation}
-              disabled={loading || !destination.trim()}
+              disabled={loading || !origin.trim() || !destination.trim()}
             >
               <ThemedText style={styles.buttonText}>
                 {loading ? "⏳ Loading..." : "🚀 Start Navigation"}
