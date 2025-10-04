@@ -1,4 +1,5 @@
 import { Image } from 'expo-image';
+import { useState } from 'react';
 import { Alert, Button, Platform, StyleSheet } from 'react-native';
 
 import { HelloWave } from '@/components/hello-wave';
@@ -9,12 +10,17 @@ import { getRoute } from '@/services/navigation';
 import { Link } from 'expo-router';
 
 export default function HomeScreen() {
+  const [loading, setLoading] = useState(false);
+
   const testNavigation = async () => {
+    setLoading(true);
     try {
       const route = await getRoute('UTSC', 'CN Tower');
       Alert.alert('Success!', `Got route with ${route.steps.length} steps`);
     } catch (error) {
       Alert.alert('Error', String(error));
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -30,7 +36,11 @@ export default function HomeScreen() {
       <ThemedView style={styles.titleContainer}>
         <ThemedText type="title">NavSense</ThemedText>
         <HelloWave />
-        <Button title="🧪 Test Navigation API" onPress={testNavigation} />
+        <Button 
+          title={loading ? "⏳ Loading..." : "🧪 Test Navigation API"} 
+          onPress={testNavigation} 
+          disabled={loading}
+        />
       </ThemedView>
       <ThemedView style={styles.stepContainer}>
         <ThemedText type="subtitle">Step 1: Try it</ThemedText>
