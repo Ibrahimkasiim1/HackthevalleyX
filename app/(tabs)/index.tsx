@@ -1,10 +1,10 @@
+import { SecurePlacesAutocomplete } from '@/components/SecurePlacesAutocomplete';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { getRoute } from '@/services/navigation';
 import * as Location from 'expo-location';
 import { useEffect, useState } from 'react';
 import { Alert, Dimensions, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
-import { GooglePlacesAutocomplete } from 'react-native-google-places-autocomplete';
 import MapView, { Marker, Polyline } from 'react-native-maps';
 
 const { width, height } = Dimensions.get('window');
@@ -353,10 +353,10 @@ export default function HomeScreen() {
       >
         <ThemedText type="title" style={styles.title}>🧭 NavSense</ThemedText>
         
-        {/* API Key Notice */}
+        {/* Security Notice */}
         <ThemedView style={styles.apiNotice}>
           <ThemedText style={styles.apiNoticeText}>
-            🔑 Add your Google Places API key above to enable location search
+            � Secure: API keys are safely stored on the server
           </ThemedText>
         </ThemedView>
         
@@ -365,80 +365,26 @@ export default function HomeScreen() {
             {/* Origin Input */}
             <ThemedView style={styles.inputContainer}>
               <ThemedText style={styles.inputLabel}>📍 From Location</ThemedText>
-              <GooglePlacesAutocomplete
+              <SecurePlacesAutocomplete
                 placeholder="From (optional - uses current location)"
-                onPress={(data, details = null) => {
-                  setOrigin(data.description);
+                value={origin}
+                onChangeText={setOrigin}
+                onPlaceSelected={(place) => {
+                  setOrigin(place.description);
                 }}
-                query={{
-                  key: 'AIzaSyBvOkBwgGlbUiuS-oSma-iXiXHjUvJBFEY', // You need to replace this
-                  language: 'en',
-                  components: 'country:ca',
-                }}
-                styles={{
-                  container: { flex: 0 },
-                  textInput: {
-                    backgroundColor: '#f8f9fa',
-                    borderRadius: 12,
-                    padding: 16,
-                    fontSize: 16,
-                    color: '#333',
-                    borderWidth: 1,
-                    borderColor: '#e0e0e0',
-                  },
-                  listView: {
-                    backgroundColor: 'white',
-                    borderRadius: 8,
-                    marginTop: 4,
-                  },
-                }}
-                textInputProps={{
-                  value: origin,
-                  onChangeText: setOrigin,
-                }}
-                enablePoweredByContainer={false}
-                fetchDetails={true}
-                debounce={300}
               />
             </ThemedView>
 
             {/* Destination Input */}
             <ThemedView style={styles.inputContainer}>
               <ThemedText style={styles.inputLabel}>🎯 To Destination *</ThemedText>
-              <GooglePlacesAutocomplete
+              <SecurePlacesAutocomplete
                 placeholder="Enter destination..."
-                onPress={(data, details = null) => {
-                  setDestination(data.description);
+                value={destination}
+                onChangeText={setDestination}
+                onPlaceSelected={(place) => {
+                  setDestination(place.description);
                 }}
-                query={{
-                  key: 'AIzaSyBvOkBwgGlbUiuS-oSma-iXiXHjUvJBFEY', // You need to replace this
-                  language: 'en',
-                  components: 'country:ca',
-                }}
-                styles={{
-                  container: { flex: 0 },
-                  textInput: {
-                    backgroundColor: '#f8f9fa',
-                    borderRadius: 12,
-                    padding: 16,
-                    fontSize: 16,
-                    color: '#333',
-                    borderWidth: 1,
-                    borderColor: '#e0e0e0',
-                  },
-                  listView: {
-                    backgroundColor: 'white',
-                    borderRadius: 8,
-                    marginTop: 4,
-                  },
-                }}
-                textInputProps={{
-                  value: destination,
-                  onChangeText: setDestination,
-                }}
-                enablePoweredByContainer={false}
-                fetchDetails={true}
-                debounce={300}
               />
             </ThemedView>
             
