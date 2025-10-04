@@ -352,13 +352,6 @@ export default function HomeScreen() {
       >
         <ThemedText type="title" style={styles.title}>🧭 NavSense</ThemedText>
         
-        {/* API Key Notice */}
-        <ThemedView style={styles.apiNotice}>
-          <ThemedText style={styles.apiNoticeText}>
-            🔑 Replace 'YOUR_GOOGLE_PLACES_API_KEY' with your Google Places API key from Google Cloud Console
-          </ThemedText>
-        </ThemedView>
-        
         {!isNavigationActive ? (
           <ThemedView style={styles.inputSection}>
             {/* Origin Input */}
@@ -826,19 +819,5 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#00AA00',
     fontWeight: 'bold',
-  },
-  apiNotice: {
-    backgroundColor: '#fff3cd',
-    borderLeftWidth: 4,
-    borderLeftColor: '#ffc107',
-    borderRadius: 8,
-    padding: 12,
-    marginBottom: 16,
-  },
-  apiNoticeText: {
-    color: '#856404',
-    fontSize: 13,
-    textAlign: 'center',
-    fontWeight: '500',
   },
 });
