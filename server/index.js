@@ -15,6 +15,15 @@ app.use(morgan('dev'));
 // Auth routes
 app.use('/api/auth', authRoutes);
 
+// Health check endpoint
+app.get('/health', (req, res) => {
+  res.status(200).json({ 
+    status: 'OK', 
+    message: 'NavSense server is running',
+    timestamp: new Date().toISOString()
+  });
+});
+
 const PORT = process.env.PORT || 3000;
 const GOOGLE_API_KEY = process.env.GOOGLE_API_KEY;
 const PARTNER_TOKEN = process.env.PARTNER_TOKEN || 'devtoken';
