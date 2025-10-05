@@ -1,5 +1,5 @@
 // services/BluetoothService.ts
-import { BleManager, Device, Characteristic, State } from 'react-native-ble-plx';
+import { BleManager, Characteristic, Device, State } from 'react-native-ble-plx';
 
 interface ConnectedDevice {
   device: Device;

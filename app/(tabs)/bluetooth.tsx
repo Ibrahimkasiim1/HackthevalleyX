@@ -1,17 +1,17 @@
 // app/bluetooth.tsx
+import BluetoothService from '@/services/BluetoothService';
+import { useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import {
-  View,
-  Text,
-  TouchableOpacity,
-  FlatList,
-  StyleSheet,
-  Alert,
-  ActivityIndicator,
+    ActivityIndicator,
+    Alert,
+    FlatList,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View,
 } from 'react-native';
 import { Device } from 'react-native-ble-plx';
-import { useRouter } from 'expo-router';
-import BluetoothService from '@/services/BluetoothService';
 
 export default function BluetoothScreen() {
   const [devices, setDevices] = useState<Device[]>([]);
