@@ -1,5 +1,4 @@
 import * as tf from '@tensorflow/tfjs';
-import '@tensorflow/tfjs-react-native';
 import { Audio } from 'expo-av';
 import RNFS from 'react-native-fs';
 
