@@ -1,4 +1,5 @@
 // services/BluetoothService.ts
+import { Platform } from 'react-native';
 import { BleManager, Characteristic, Device, State } from 'react-native-ble-plx';
 
 interface ConnectedDevice {
@@ -7,27 +8,70 @@ interface ConnectedDevice {
 }
 
 class BluetoothService {
-  private manager: BleManager;
+  private manager: BleManager | null = null;
   private connectedDevices: Map<string, ConnectedDevice> = new Map();
   private maxConnections = 2;
 
   constructor() {
-    this.manager = new BleManager();
+    // Lazy initialization - don't create BleManager here
+  }
+
+  private getManager(): BleManager {
+    if (!this.manager) {
+      try {
+        // Check if we're on a supported platform
+        if (Platform.OS === 'web') {
+          throw new Error('Bluetooth is not supported on web platform');
+        }
+        
+        // Check if we're in a simulator/emulator environment
+        if (__DEV__ && (Platform.OS === 'ios' || Platform.OS === 'android')) {
+          console.warn('Bluetooth may not work properly in simulator/emulator. Use a physical device for full functionality.');
+        }
+        
+        this.manager = new BleManager();
+      } catch (error) {
+        console.error('Failed to create BleManager:', error);
+        throw new Error('Bluetooth is not available on this device or platform. Make sure you are running on a physical device with Bluetooth support.');
+      }
+    }
+    return this.manager;
   }
 
   async initialize(): Promise<boolean> {
     try {
-      const state = await this.manager.state();
-      return state === State.PoweredOn;
+      const manager = this.getManager();
+      const state = await manager.state();
+      
+      console.log('Bluetooth state:', state);
+      
+      if (state === State.PoweredOn) {
+        console.log('Bluetooth is ready');
+        return true;
+      } else {
+        console.warn('Bluetooth is not powered on. Current state:', state);
+        return false;
+      }
     } catch (error) {
       console.error('Failed to initialize Bluetooth:', error);
+      
+      // Provide more specific error messages
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      if (errorMessage.includes('not available')) {
+        console.error('Bluetooth hardware is not available on this device');
+      } else if (errorMessage.includes('permission')) {
+        console.error('Bluetooth permissions are not granted');
+      } else {
+        console.error('Unknown Bluetooth initialization error:', error);
+      }
+      
       return false;
     }
   }
 
   async startScanning(onDeviceFound: (device: Device) => void): Promise<void> {
     try {
-      this.manager.startDeviceScan(null, null, (error, device) => {
+      this.getManager().startDeviceScan(null, null, (error, device) => {
         if (error) {
           console.error('Scan error:', error);
           return;
@@ -43,7 +87,9 @@ class BluetoothService {
   }
 
   stopScanning(): void {
-    this.manager.stopDeviceScan();
+    if (this.manager) {
+      this.manager.stopDeviceScan();
+    }
   }
 
   canConnectMoreDevices(): boolean {
@@ -63,7 +109,7 @@ class BluetoothService {
       // Stop scanning before connecting
       this.stopScanning();
 
-      const device = await this.manager.connectToDevice(deviceId);
+      const device = await this.getManager().connectToDevice(deviceId);
       await device.discoverAllServicesAndCharacteristics();
 
       // Try to find a writable characteristic
@@ -204,7 +250,9 @@ class BluetoothService {
   }
 
   destroy(): void {
-    this.manager.destroy();
+    if (this.manager) {
+      this.manager.destroy();
+    }
     this.connectedDevices.clear();
   }
 }

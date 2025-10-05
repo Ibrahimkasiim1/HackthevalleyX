@@ -3,13 +3,13 @@ import BluetoothService from '@/services/BluetoothService';
 import { useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import {
-    ActivityIndicator,
-    Alert,
-    FlatList,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View,
+  ActivityIndicator,
+  Alert,
+  FlatList,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
 } from 'react-native';
 import { Device } from 'react-native-ble-plx';
 
@@ -32,10 +32,19 @@ export default function BluetoothScreen() {
       const isReady = await BluetoothService.initialize();
       setBluetoothReady(isReady);
       if (!isReady) {
-        Alert.alert('Bluetooth Error', 'Please enable Bluetooth and try again');
+        Alert.alert(
+          'Bluetooth Not Available', 
+          'Bluetooth is not available on this device or platform. Please ensure you are running on a physical device with Bluetooth support.',
+          [{ text: 'OK' }]
+        );
       }
     } catch (error) {
-      Alert.alert('Error', 'Failed to initialize Bluetooth');
+      console.error('Bluetooth initialization error:', error);
+      Alert.alert(
+        'Bluetooth Error', 
+        'Failed to initialize Bluetooth. This may be because you are running on a simulator or the device does not support Bluetooth.',
+        [{ text: 'OK' }]
+      );
     }
   };
 

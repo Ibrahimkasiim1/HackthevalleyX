@@ -1,10 +1,12 @@
+import { AudioClassificationDisplay } from '@/components/AudioClassificationDisplay';
 import { SecurePlacesAutocomplete } from '@/components/SecurePlacesAutocomplete';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
+import { AudioClassificationResult, audioClassificationService } from '@/services/AudioClassificationService';
 import { getRoute } from '@/services/navigation';
 import * as Location from 'expo-location';
 import { useEffect, useState } from 'react';
-import { Alert, Dimensions, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
+import { Alert, Dimensions, Linking, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
 import MapView, { Marker, Polyline } from 'react-native-maps';
 
 const { width, height } = Dimensions.get('window');
@@ -23,11 +25,67 @@ export default function HomeScreen() {
   const [distanceToNextTurn, setDistanceToNextTurn] = useState<number>(0);
   const [bottomSheetIndex, setBottomSheetIndex] = useState(0);
   const [isInputPanelVisible, setIsInputPanelVisible] = useState(true);
+  
+  // Audio classification state
+  const [audioClassificationResult, setAudioClassificationResult] = useState<AudioClassificationResult | null>(null);
+  const [isAudioClassificationActive, setIsAudioClassificationActive] = useState(false);
+  const [audioClassificationError, setAudioClassificationError] = useState<string | null>(null);
 
   // Request location permissions on component mount
   useEffect(() => {
     requestLocationPermission();
+    initializeAudioClassification();
   }, []);
+
+  // Initialize audio classification
+  const initializeAudioClassification = async () => {
+    try {
+      console.log('Initializing audio classification...');
+      const modelLoaded = await audioClassificationService.loadModel();
+      if (modelLoaded) {
+        console.log('Audio classification model loaded successfully');
+        await startAudioClassification();
+      } else {
+        setAudioClassificationError('Failed to load audio classification model');
+      }
+    } catch (error) {
+      console.error('Failed to initialize audio classification:', error);
+      setAudioClassificationError('Failed to initialize audio classification');
+    }
+  };
+
+  // Start audio classification
+  const startAudioClassification = async () => {
+    try {
+      const started = await audioClassificationService.startClassification((result) => {
+        setAudioClassificationResult(result);
+        console.log('Audio classification result:', result);
+      });
+      
+      if (started) {
+        setIsAudioClassificationActive(true);
+        setAudioClassificationError(null);
+        console.log('Audio classification started successfully');
+      } else {
+        setAudioClassificationError('Failed to start audio classification');
+      }
+    } catch (error) {
+      console.error('Failed to start audio classification:', error);
+      setAudioClassificationError('Failed to start audio classification');
+    }
+  };
+
+  // Stop audio classification
+  const stopAudioClassification = async () => {
+    try {
+      await audioClassificationService.stopClassification();
+      setIsAudioClassificationActive(false);
+      setAudioClassificationResult(null);
+      console.log('Audio classification stopped');
+    } catch (error) {
+      console.error('Failed to stop audio classification:', error);
+    }
+  };
 
   const requestLocationPermission = async () => {
     try {
@@ -222,10 +280,26 @@ export default function HomeScreen() {
     Alert.alert('Navigation Stopped', '🛑 GPS tracking stopped. You can start a new route anytime.');
   };
 
+  const openVoiceAI = async () => {
+    try {
+      const url = 'https://elevenlabs.io/app/talk-to?agent_id=agent_9901k6p9fcrffe2vtyeayzykb9a5'; // Replace with your actual Voice AI website URL
+      const supported = await Linking.canOpenURL(url);
+      
+      if (supported) {
+        await Linking.openURL(url);
+      } else {
+        Alert.alert('Error', 'Cannot open the Voice AI website');
+      }
+    } catch (error) {
+      Alert.alert('Error', 'Failed to open Voice AI website');
+    }
+  };
+
   // Cleanup on component unmount
   useEffect(() => {
     return () => {
       stopLocationTracking();
+      stopAudioClassification();
     };
   }, []);
 
@@ -301,6 +375,13 @@ export default function HomeScreen() {
           </View>
         </View>
       )}
+
+      {/* Audio Classification Display */}
+      <AudioClassificationDisplay
+        result={audioClassificationResult}
+        isActive={isAudioClassificationActive}
+        error={audioClassificationError}
+      />
       
       {/* Fullscreen Map View */}
       <View style={styles.fullscreenMap}>
@@ -464,6 +545,15 @@ export default function HomeScreen() {
             >
               <ThemedText style={styles.buttonText}>
                 {loading ? "Loading..." : "Start Navigation"}
+              </ThemedText>
+            </TouchableOpacity>
+            
+            <TouchableOpacity 
+              style={[styles.button, styles.voiceAIButton]} 
+              onPress={openVoiceAI}
+            >
+              <ThemedText style={styles.buttonText}>
+                Voice AI Agent
               </ThemedText>
             </TouchableOpacity>
           </ThemedView>
@@ -632,6 +722,10 @@ const styles = StyleSheet.create({
   startButton: {
     backgroundColor: '#007AFF',
     marginTop: 8,
+  },
+  voiceAIButton: {
+    backgroundColor: '#34C759',
+    marginTop: 12,
   },
   stopButton: {
     backgroundColor: '#FF3B30',

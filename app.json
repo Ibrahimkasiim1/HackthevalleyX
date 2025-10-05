@@ -12,7 +12,8 @@
       "supportsTablet": true,
       "infoPlist": {
         "NSBluetoothAlwaysUsageDescription": "This app uses Bluetooth to connect to nearby devices for communication.",
-        "NSBluetoothPeripheralUsageDescription": "This app uses Bluetooth to connect to nearby devices for communication."
+        "NSBluetoothPeripheralUsageDescription": "This app uses Bluetooth to connect to nearby devices for communication.",
+        "NSMicrophoneUsageDescription": "This app uses the microphone for audio classification to detect sirens and other sounds for navigation assistance."
       },
       "bundleIdentifier": "com.ibrahimkasim.NavSense"
     },
@@ -31,7 +32,8 @@
         "android.permission.BLUETOOTH_CONNECT",
         "android.permission.BLUETOOTH_SCAN",
         "android.permission.ACCESS_COARSE_LOCATION",
-        "android.permission.ACCESS_FINE_LOCATION"
+        "android.permission.ACCESS_FINE_LOCATION",
+        "android.permission.RECORD_AUDIO"
       ]
     },
     "web": {
