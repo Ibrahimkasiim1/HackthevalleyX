@@ -1,10 +1,11 @@
 import { SecurePlacesAutocomplete } from '@/components/SecurePlacesAutocomplete';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
+import { BottomSheet } from '@/components/BottomSheet';
 import { getRoute } from '@/services/navigation';
 import * as Location from 'expo-location';
 import { useEffect, useState } from 'react';
-import { Alert, Dimensions, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
+import { Alert, Dimensions, StyleSheet, TouchableOpacity, View } from 'react-native';
 import MapView, { Marker, Polyline } from 'react-native-maps';
 
 const { width, height } = Dimensions.get('window');
@@ -22,7 +23,6 @@ export default function HomeScreen() {
   const [hapticNotification, setHapticNotification] = useState<{visible: boolean, message: string, command: string}>({visible: false, message: '', command: ''});
   const [distanceToNextTurn, setDistanceToNextTurn] = useState<number>(0);
   const [bottomSheetIndex, setBottomSheetIndex] = useState(0);
-  const [isInputPanelVisible, setIsInputPanelVisible] = useState(true);
 
   // Request location permissions on component mount
   useEffect(() => {
@@ -192,9 +192,6 @@ export default function HomeScreen() {
       // Start real-time GPS tracking
       await startLocationTracking();
       
-      // Hide input panel and show floating button
-      setIsInputPanelVisible(false);
-      
       Alert.alert(
         'Navigation Started!', 
         `${transportMode.toUpperCase()} Route: ${route.summary.originName} → ${route.summary.destinationName}\n\n🛰️ Real-time GPS tracking is now active!`
@@ -215,9 +212,6 @@ export default function HomeScreen() {
     
     // Stop real-time GPS tracking
     stopLocationTracking();
-    
-    // Show input panel again
-    setIsInputPanelVisible(true);
     
     Alert.alert('Navigation Stopped', '🛑 GPS tracking stopped. You can start a new route anytime.');
   };
@@ -278,7 +272,7 @@ export default function HomeScreen() {
   };
 
   return (
-    <View style={styles.container}>
+    <ThemedView style={styles.container}>
       {/* Haptic Popup Notification */}
       {hapticNotification.visible && (
         <View style={styles.hapticPopupOverlay}>
@@ -302,8 +296,8 @@ export default function HomeScreen() {
         </View>
       )}
       
-      {/* Fullscreen Map View */}
-      <View style={styles.fullscreenMap}>
+      {/* Map View */}
+      <View style={styles.mapContainer}>
         {currentLocation ? (
           <MapView
             style={styles.map}
@@ -359,32 +353,12 @@ export default function HomeScreen() {
         )}
       </View>
 
-      {/* Floating Button */}
-      {!isInputPanelVisible && (
-        <TouchableOpacity 
-          style={styles.floatingButton}
-          onPress={() => setIsInputPanelVisible(true)}
-        >
-          <ThemedText style={styles.floatingButtonText}>📍</ThemedText>
-        </TouchableOpacity>
-      )}
-
-      {/* Simple Bottom Panel */}
-      {isInputPanelVisible && (
-        <View style={styles.bottomPanel}>
-          {/* Close Button */}
-          <TouchableOpacity 
-            style={styles.closeButton}
-            onPress={() => setIsInputPanelVisible(false)}
-          >
-            <ThemedText style={styles.closeButtonText}>✕</ThemedText>
-          </TouchableOpacity>
-          
-          <ScrollView 
-            style={styles.panelScrollView}
-            showsVerticalScrollIndicator={true}
-            contentContainerStyle={styles.panelScrollContent}
-          >
+      {/* Scrollable Navigation Controls */}
+      <ScrollView 
+        style={styles.scrollContainer}
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+      >
         {!isNavigationActive ? (
           <ThemedView style={styles.inputSection}>
             {/* Origin Input */}
@@ -544,10 +518,8 @@ export default function HomeScreen() {
             </ThemedView>
           </ThemedView>
         )}
-          </ScrollView>
-        </View>
-      )}
-    </View>
+      </ScrollView>
+    </ThemedView>
   );
 }
 
@@ -555,9 +527,6 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#f8f9fa',
-  },
-  fullscreenMap: {
-    flex: 1,
   },
   mapContainer: {
     height: height * 0.4, // Better balance for autocomplete
@@ -578,6 +547,16 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     backgroundColor: 'rgba(0,0,0,0.05)',
+  },
+  scrollContainer: {
+    flex: 1,
+    backgroundColor: '#f8f9fa',
+    borderTopWidth: 1,
+    borderTopColor: '#e0e0e0',
+  },
+  scrollContent: {
+    padding: 20,
+    paddingBottom: 30,
   },
   title: {
     textAlign: 'center',
@@ -924,64 +903,5 @@ const styles = StyleSheet.create({
     fontSize: 13,
     textAlign: 'center',
     fontWeight: '500',
-  },
-  bottomPanel: {
-    backgroundColor: '#fff',
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-    paddingHorizontal: 20,
-    paddingTop: 10,
-    paddingBottom: 20,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: -2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 5,
-    maxHeight: height * 0.7, // Set maximum height to 70% of screen
-    flex: 1,
-  },
-  panelScrollView: {
-    flex: 1,
-    paddingTop: 20, // Space for close button
-  },
-  panelScrollContent: {
-    paddingBottom: 20, // Bottom padding for better scrolling
-  },
-  floatingButton: {
-    position: 'absolute',
-    bottom: 30,
-    right: 20,
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-    backgroundColor: '#007AFF',
-    justifyContent: 'center',
-    alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 8,
-  },
-  floatingButtonText: {
-    fontSize: 24,
-    color: '#fff',
-  },
-  closeButton: {
-    position: 'absolute',
-    top: 15,
-    right: 15,
-    width: 30,
-    height: 30,
-    borderRadius: 15,
-    backgroundColor: '#f0f0f0',
-    justifyContent: 'center',
-    alignItems: 'center',
-    zIndex: 10,
-  },
-  closeButtonText: {
-    fontSize: 16,
-    color: '#666',
-    fontWeight: 'bold',
   },
 });
