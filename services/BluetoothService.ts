@@ -106,7 +106,7 @@ class BluetoothService {
     }
   }
 
-  async sendAsciiF(deviceId: string): Promise<void> {
+  async sendAsciiCommand(deviceId: string, command: string): Promise<void> {
     const connectedDevice = this.connectedDevices.get(deviceId);
     
     if (!connectedDevice || !connectedDevice.device) {
@@ -118,11 +118,30 @@ class BluetoothService {
     }
 
     try {
-      // Create buffer with ASCII 'F' (value 70)
-      const data = new Uint8Array([70]);
+      // Validate command and get ASCII value
+      let asciiValue: number;
+      switch (command.toUpperCase()) {
+        case 'F':
+          asciiValue = 70; // F
+          break;
+        case 'R':
+          asciiValue = 82; // R
+          break;
+        case 'C':
+          asciiValue = 67; // C
+          break;
+        case 'S':
+          asciiValue = 83; // S
+          break;
+        default:
+          throw new Error(`Unsupported command: ${command}`);
+      }
+
+      // Create buffer with ASCII value
+      const data = new Uint8Array([asciiValue]);
       const base64Data = this.uint8ArrayToBase64(data);
 
-      console.log(`Sending ASCII F to device: ${deviceId}`);
+      console.log(`Sending ASCII ${command} (value ${asciiValue}) to device: ${deviceId}`);
 
       const characteristic = connectedDevice.writeCharacteristic;
 
@@ -132,9 +151,9 @@ class BluetoothService {
         await characteristic.writeWithoutResponse(base64Data);
       }
 
-      console.log('Successfully sent ASCII F');
+      console.log(`Successfully sent ASCII ${command}`);
     } catch (error) {
-      console.error('Failed to send ASCII F:', error);
+      console.error(`Failed to send ASCII ${command}:`, error);
       throw error;
     }
   }

@@ -16,7 +16,7 @@ import { Device } from 'react-native-ble-plx';
 export default function BluetoothTerminalScreen() {
   const [connectedDevices, setConnectedDevices] = useState<Device[]>([]);
   const [messages, setMessages] = useState<string[]>([]);
-  const [sendingStates, setSendingStates] = useState<{[deviceId: string]: boolean}>({});
+  const [sendingStates, setSendingStates] = useState<{[deviceId: string]: {[command: string]: boolean}}>({});
   const router = useRouter();
 
   useEffect(() => {
@@ -36,34 +36,46 @@ export default function BluetoothTerminalScreen() {
     }
   };
 
-  const sendAsciiF = async (device: Device) => {
+  const sendCommand = async (device: Device, command: string) => {
     if (!BluetoothService.isDeviceConnected(device.id)) {
       Alert.alert('Error', 'Device is not connected');
       return;
     }
 
     try {
-      // Set sending state for this device
-      setSendingStates(prev => ({ ...prev, [device.id]: true }));
+      // Set sending state for this device and command
+      setSendingStates(prev => ({
+        ...prev,
+        [device.id]: {
+          ...prev[device.id],
+          [command]: true
+        }
+      }));
 
       const timestamp = new Date().toLocaleTimeString();
-      const sendingMessage = `[${timestamp}] Sending ASCII F to ${device.name || 'Unknown Device'}...`;
+      const sendingMessage = `[${timestamp}] Sending ASCII ${command} to ${device.name || 'Unknown Device'}...`;
       setMessages(prev => [...prev, sendingMessage]);
 
-      await BluetoothService.sendAsciiF(device.id);
+      await BluetoothService.sendAsciiCommand(device.id, command);
 
-      const successMessage = `[${timestamp}] ✓ Successfully sent ASCII F to ${device.name || 'Unknown Device'}`;
+      const successMessage = `[${timestamp}] ✓ Successfully sent ASCII ${command} to ${device.name || 'Unknown Device'}`;
       setMessages(prev => [...prev, successMessage]);
 
     } catch (error) {
       const timestamp = new Date().toLocaleTimeString();
-      const errorMessage = `[${timestamp}] ✗ Failed to send to ${device.name || 'Unknown Device'}: ${error.message}`;
+      const errorMessage = `[${timestamp}] ✗ Failed to send ${command} to ${device.name || 'Unknown Device'}: ${error.message}`;
       setMessages(prev => [...prev, errorMessage]);
       
-      Alert.alert('Send Failed', `Could not send data to ${device.name || 'Unknown Device'}`);
+      Alert.alert('Send Failed', `Could not send ${command} to ${device.name || 'Unknown Device'}`);
     } finally {
-      // Clear sending state for this device
-      setSendingStates(prev => ({ ...prev, [device.id]: false }));
+      // Clear sending state for this device and command
+      setSendingStates(prev => ({
+        ...prev,
+        [device.id]: {
+          ...prev[device.id],
+          [command]: false
+        }
+      }));
     }
   };
 
@@ -102,6 +114,18 @@ export default function BluetoothTerminalScreen() {
     setMessages([]);
   };
 
+  const isSending = (deviceId: string, command: string): boolean => {
+    return sendingStates[deviceId]?.[command] || false;
+  };
+
+  // Command buttons configuration
+  const commandButtons = [
+    { command: 'F', label: 'Send F', color: '#007AFF', description: 'ASCII: 70' },
+    { command: 'R', label: 'Send R', color: '#FF9500', description: 'ASCII: 82' },
+    { command: 'C', label: 'Send C', color: '#34C759', description: 'ASCII: 67' },
+    { command: 'S', label: 'Send S', color: '#AF52DE', description: 'ASCII: 83' },
+  ];
+
   if (connectedDevices.length === 0) {
     return (
       <View style={styles.container}>
@@ -138,28 +162,45 @@ export default function BluetoothTerminalScreen() {
         {connectedDevices.map((device, index) => (
           <View key={device.id} style={styles.deviceControl}>
             <View style={styles.deviceHeader}>
-              <Text style={styles.deviceName}>
-                Device {index + 1}: {device.name || 'Unknown Device'}
-              </Text>
+              <View style={styles.deviceInfo}>
+                <Text style={styles.deviceName}>
+                  Device {index + 1}: {device.name || 'Unknown Device'}
+                </Text>
+                <Text style={styles.deviceId}>{device.id}</Text>
+              </View>
               <View style={styles.statusIndicator}>
                 <View style={styles.statusDot} />
                 <Text style={styles.statusText}>Connected</Text>
               </View>
             </View>
             
-            <View style={styles.deviceActions}>
-              <TouchableOpacity
-                style={styles.sendButton}
-                onPress={() => sendAsciiF(device)}
-                disabled={sendingStates[device.id]}
-              >
-                {sendingStates[device.id] ? (
-                  <ActivityIndicator color="#fff" size="small" />
-                ) : (
-                  <Text style={styles.sendButtonText}>Send ASCII 'F'</Text>
-                )}
-              </TouchableOpacity>
+            {/* Command Buttons */}
+            <View style={styles.commandButtonsContainer}>
+              {commandButtons.map((btn) => (
+                <TouchableOpacity
+                  key={btn.command}
+                  style={[
+                    styles.commandButton,
+                    { backgroundColor: btn.color },
+                    isSending(device.id, btn.command) && styles.buttonDisabled
+                  ]}
+                  onPress={() => sendCommand(device, btn.command)}
+                  disabled={isSending(device.id, btn.command)}
+                >
+                  {isSending(device.id, btn.command) ? (
+                    <ActivityIndicator color="#fff" size="small" />
+                  ) : (
+                    <View style={styles.commandButtonContent}>
+                      <Text style={styles.commandButtonText}>{btn.label}</Text>
+                      <Text style={styles.commandButtonDescription}>{btn.description}</Text>
+                    </View>
+                  )}
+                </TouchableOpacity>
+              ))}
+            </View>
 
+            {/* Device Actions */}
+            <View style={styles.deviceActions}>
               <TouchableOpacity
                 style={styles.deviceDisconnectButton}
                 onPress={() => disconnectDevice(device)}
@@ -248,14 +289,22 @@ const styles = StyleSheet.create({
   deviceHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 12,
+    alignItems: 'flex-start',
+    marginBottom: 16,
+  },
+  deviceInfo: {
+    flex: 1,
   },
   deviceName: {
     fontSize: 16,
     fontWeight: '600',
     color: '#333',
-    flex: 1,
+    marginBottom: 4,
+  },
+  deviceId: {
+    fontSize: 12,
+    color: '#666',
+    fontFamily: 'monospace',
   },
   statusIndicator: {
     flexDirection: 'row',
@@ -273,23 +322,40 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '500',
   },
-  deviceActions: {
+  commandButtonsContainer: {
     flexDirection: 'row',
-    gap: 12,
+    flexWrap: 'wrap',
+    gap: 8,
+    marginBottom: 12,
   },
-  sendButton: {
-    flex: 2,
-    backgroundColor: '#007AFF',
+  commandButton: {
+    flex: 1,
+    minWidth: '48%', // Approximately 2 buttons per row
     padding: 12,
     borderRadius: 8,
     alignItems: 'center',
     justifyContent: 'center',
-    minHeight: 44,
+    minHeight: 60,
   },
-  sendButtonText: {
+  buttonDisabled: {
+    opacity: 0.6,
+  },
+  commandButtonContent: {
+    alignItems: 'center',
+  },
+  commandButtonText: {
     color: '#fff',
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: '600',
+    marginBottom: 2,
+  },
+  commandButtonDescription: {
+    color: 'rgba(255, 255, 255, 0.8)',
+    fontSize: 10,
+    fontWeight: '400',
+  },
+  deviceActions: {
+    flexDirection: 'row',
   },
   deviceDisconnectButton: {
     flex: 1,
