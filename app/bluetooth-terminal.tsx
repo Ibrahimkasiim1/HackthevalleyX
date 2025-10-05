@@ -7,69 +7,94 @@ import {
   ScrollView,
   StyleSheet,
   Alert,
+  ActivityIndicator,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import BluetoothService from '@/services/BluetoothService';
+import { Device } from 'react-native-ble-plx';
 
 export default function BluetoothTerminalScreen() {
-  const [connected, setConnected] = useState(false);
-  const [deviceName, setDeviceName] = useState('');
+  const [connectedDevices, setConnectedDevices] = useState<Device[]>([]);
   const [messages, setMessages] = useState<string[]>([]);
+  const [sendingStates, setSendingStates] = useState<{[deviceId: string]: boolean}>({});
   const router = useRouter();
 
   useEffect(() => {
-    checkConnection();
+    loadConnectedDevices();
   }, []);
 
-  const checkConnection = () => {
-    const isConnected = BluetoothService.isConnected();
-    const device = BluetoothService.getConnectedDevice();
+  const loadConnectedDevices = () => {
+    const devices = BluetoothService.getConnectedDevicesList();
+    setConnectedDevices(devices);
     
-    setConnected(isConnected);
-    if (device) {
-      setDeviceName(device.name || 'Unknown Device');
-    }
-    
-    if (!isConnected) {
+    if (devices.length === 0) {
       Alert.alert(
-        'Not Connected',
-        'Please connect to a Bluetooth device first',
+        'No Devices Connected',
+        'Please connect to at least one device first',
         [{ text: 'Go Back', onPress: () => router.back() }]
       );
     }
   };
 
-  const sendAsciiF = async () => {
-    if (!connected) {
-      Alert.alert('Error', 'No device connected');
+  const sendAsciiF = async (device: Device) => {
+    if (!BluetoothService.isDeviceConnected(device.id)) {
+      Alert.alert('Error', 'Device is not connected');
       return;
     }
 
     try {
+      // Set sending state for this device
+      setSendingStates(prev => ({ ...prev, [device.id]: true }));
+
       const timestamp = new Date().toLocaleTimeString();
-      const sendingMessage = `[${timestamp}] Sending ASCII F (value 70)...`;
+      const sendingMessage = `[${timestamp}] Sending ASCII F to ${device.name || 'Unknown Device'}...`;
       setMessages(prev => [...prev, sendingMessage]);
 
-      await BluetoothService.sendAsciiF();
+      await BluetoothService.sendAsciiF(device.id);
 
-      const successMessage = `[${timestamp}] ✓ Successfully sent ASCII F`;
+      const successMessage = `[${timestamp}] ✓ Successfully sent ASCII F to ${device.name || 'Unknown Device'}`;
       setMessages(prev => [...prev, successMessage]);
 
     } catch (error) {
       const timestamp = new Date().toLocaleTimeString();
-      const errorMessage = `[${timestamp}] ✗ Failed to send: ${error.message}`;
+      const errorMessage = `[${timestamp}] ✗ Failed to send to ${device.name || 'Unknown Device'}: ${error.message}`;
       setMessages(prev => [...prev, errorMessage]);
       
-      Alert.alert('Send Failed', 'Could not send data to device');
+      Alert.alert('Send Failed', `Could not send data to ${device.name || 'Unknown Device'}`);
+    } finally {
+      // Clear sending state for this device
+      setSendingStates(prev => ({ ...prev, [device.id]: false }));
     }
   };
 
-  const disconnect = async () => {
+  const disconnectDevice = async (device: Device) => {
     try {
-      await BluetoothService.disconnectDevice();
+      await BluetoothService.disconnectDevice(device.id);
+      
+      // Update connected devices list
+      const updatedDevices = BluetoothService.getConnectedDevicesList();
+      setConnectedDevices(updatedDevices);
+
+      const timestamp = new Date().toLocaleTimeString();
+      const disconnectMessage = `[${timestamp}] Disconnected from ${device.name || 'Unknown Device'}`;
+      setMessages(prev => [...prev, disconnectMessage]);
+
+      // If no devices left, go back
+      if (updatedDevices.length === 0) {
+        setTimeout(() => router.back(), 1000);
+      }
+    } catch (error) {
+      Alert.alert('Error', 'Failed to disconnect device');
+    }
+  };
+
+  const disconnectAll = async () => {
+    try {
+      await BluetoothService.disconnectAllDevices();
+      setConnectedDevices([]);
       router.back();
     } catch (error) {
-      Alert.alert('Error', 'Failed to disconnect');
+      Alert.alert('Error', 'Failed to disconnect all devices');
     }
   };
 
@@ -77,16 +102,16 @@ export default function BluetoothTerminalScreen() {
     setMessages([]);
   };
 
-  if (!connected) {
+  if (connectedDevices.length === 0) {
     return (
       <View style={styles.container}>
         <View style={styles.header}>
           <Text style={styles.title}>Bluetooth Terminal</Text>
-          <Text style={styles.subtitle}>Not Connected</Text>
+          <Text style={styles.subtitle}>No Devices Connected</Text>
         </View>
         <View style={styles.notConnected}>
           <Text style={styles.notConnectedText}>
-            Please connect to a device first
+            Please connect to devices first
           </Text>
           <TouchableOpacity
             style={styles.backButton}
@@ -103,47 +128,79 @@ export default function BluetoothTerminalScreen() {
     <View style={styles.container}>
       <View style={styles.header}>
         <Text style={styles.title}>Bluetooth Terminal</Text>
-        <Text style={styles.subtitle}>Connected to: {deviceName}</Text>
+        <Text style={styles.subtitle}>
+          Connected to {connectedDevices.length} device(s)
+        </Text>
       </View>
 
-      <View style={styles.controls}>
+      {/* Device Controls */}
+      <View style={styles.devicesContainer}>
+        {connectedDevices.map((device, index) => (
+          <View key={device.id} style={styles.deviceControl}>
+            <View style={styles.deviceHeader}>
+              <Text style={styles.deviceName}>
+                Device {index + 1}: {device.name || 'Unknown Device'}
+              </Text>
+              <View style={styles.statusIndicator}>
+                <View style={styles.statusDot} />
+                <Text style={styles.statusText}>Connected</Text>
+              </View>
+            </View>
+            
+            <View style={styles.deviceActions}>
+              <TouchableOpacity
+                style={styles.sendButton}
+                onPress={() => sendAsciiF(device)}
+                disabled={sendingStates[device.id]}
+              >
+                {sendingStates[device.id] ? (
+                  <ActivityIndicator color="#fff" size="small" />
+                ) : (
+                  <Text style={styles.sendButtonText}>Send ASCII 'F'</Text>
+                )}
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.deviceDisconnectButton}
+                onPress={() => disconnectDevice(device)}
+              >
+                <Text style={styles.deviceDisconnectText}>Disconnect</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        ))}
+      </View>
+
+      {/* Terminal Controls */}
+      <View style={styles.terminalControls}>
         <TouchableOpacity
-          style={styles.sendButton}
-          onPress={sendAsciiF}
+          style={styles.clearButton}
+          onPress={clearMessages}
         >
-          <Text style={styles.sendButtonText}>Send ASCII 'F'</Text>
+          <Text style={styles.clearButtonText}>Clear Messages</Text>
         </TouchableOpacity>
 
-        <View style={styles.secondaryControls}>
-          <TouchableOpacity
-            style={styles.clearButton}
-            onPress={clearMessages}
-          >
-            <Text style={styles.clearButtonText}>Clear</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={styles.disconnectButton}
-            onPress={disconnect}
-          >
-            <Text style={styles.disconnectButtonText}>Disconnect</Text>
-          </TouchableOpacity>
-        </View>
+        <TouchableOpacity
+          style={styles.disconnectAllButton}
+          onPress={disconnectAll}
+        >
+          <Text style={styles.disconnectAllText}>Disconnect All</Text>
+        </TouchableOpacity>
       </View>
 
+      {/* Terminal Output */}
       <View style={styles.terminal}>
         <View style={styles.terminalHeader}>
           <Text style={styles.terminalTitle}>Terminal Output</Text>
-          <View style={styles.connectionStatus}>
-            <View style={styles.statusDot} />
-            <Text style={styles.statusText}>Connected</Text>
-          </View>
+          <Text style={styles.terminalSubtitle}>
+            {connectedDevices.length} device(s) connected
+          </Text>
         </View>
         
         <ScrollView style={styles.messagesContainer}>
           {messages.length === 0 ? (
             <Text style={styles.noMessages}>
-              No messages yet. Send a command to see output.
+              No messages yet. Send commands to see output.
             </Text>
           ) : (
             messages.map((message, index) => (
@@ -165,7 +222,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
   },
   header: {
-    marginBottom: 30,
+    marginBottom: 20,
   },
   title: {
     fontSize: 28,
@@ -177,24 +234,82 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#666',
   },
-  controls: {
+  devicesContainer: {
     marginBottom: 20,
   },
-  sendButton: {
-    backgroundColor: '#007AFF',
+  deviceControl: {
+    backgroundColor: '#f8f9fa',
     padding: 16,
     borderRadius: 12,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: '#e9ecef',
+  },
+  deviceHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: 12,
   },
-  sendButtonText: {
-    color: '#fff',
-    fontSize: 18,
+  deviceName: {
+    fontSize: 16,
     fontWeight: '600',
+    color: '#333',
+    flex: 1,
   },
-  secondaryControls: {
+  statusIndicator: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  statusDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: '#22c55e',
+  },
+  statusText: {
+    color: '#22c55e',
+    fontSize: 12,
+    fontWeight: '500',
+  },
+  deviceActions: {
     flexDirection: 'row',
     gap: 12,
+  },
+  sendButton: {
+    flex: 2,
+    backgroundColor: '#007AFF',
+    padding: 12,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+    minHeight: 44,
+  },
+  sendButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  deviceDisconnectButton: {
+    flex: 1,
+    backgroundColor: '#fff5f5',
+    padding: 12,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: '#fed7d7',
+  },
+  deviceDisconnectText: {
+    color: '#dc2626',
+    fontSize: 14,
+    fontWeight: '500',
+  },
+  terminalControls: {
+    flexDirection: 'row',
+    gap: 12,
+    marginBottom: 20,
   },
   clearButton: {
     flex: 1,
@@ -209,7 +324,7 @@ const styles = StyleSheet.create({
     color: '#666',
     fontWeight: '500',
   },
-  disconnectButton: {
+  disconnectAllButton: {
     flex: 1,
     backgroundColor: '#fff5f5',
     padding: 12,
@@ -218,7 +333,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#fed7d7',
   },
-  disconnectButtonText: {
+  disconnectAllText: {
     color: '#dc2626',
     fontWeight: '500',
   },
@@ -229,30 +344,18 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   terminalHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
     padding: 16,
     backgroundColor: '#2a2a2a',
   },
   terminalTitle: {
     color: '#fff',
     fontWeight: '600',
+    fontSize: 16,
   },
-  connectionStatus: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-  },
-  statusDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: '#22c55e',
-  },
-  statusText: {
-    color: '#22c55e',
+  terminalSubtitle: {
+    color: '#888',
     fontSize: 12,
+    marginTop: 4,
   },
   messagesContainer: {
     flex: 1,
@@ -269,6 +372,7 @@ const styles = StyleSheet.create({
     color: '#888',
     textAlign: 'center',
     marginTop: 20,
+    fontStyle: 'italic',
   },
   notConnected: {
     flex: 1,
