@@ -9,7 +9,13 @@
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "infoPlist": {
+        "NSLocationWhenInUseUsageDescription": "This app needs location access to provide navigation directions.",
+        "NSLocationAlwaysAndWhenInUseUsageDescription": "This app needs location access to provide turn-by-turn navigation.",
+        "NSLocationAlwaysUsageDescription": "This app needs location access to provide turn-by-turn navigation."
+      },
+      "bundleIdentifier": "com.navsense.app"
     },
     "android": {
       "adaptiveIcon": {
@@ -19,7 +25,13 @@
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
       },
       "edgeToEdgeEnabled": true,
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": false,
+      "permissions": [
+        "ACCESS_COARSE_LOCATION",
+        "ACCESS_FINE_LOCATION",
+        "ACCESS_BACKGROUND_LOCATION"
+      ],
+      "package": "com.navsense.app"
     },
     "web": {
       "output": "static",
@@ -27,6 +39,14 @@
     },
     "plugins": [
       "expo-router",
+      "expo-location",
+      "expo-notifications",
+      [
+        "react-native-maps",
+        {
+          "enableGoogleMaps": true
+        }
+      ],
       [
         "expo-splash-screen",
         {

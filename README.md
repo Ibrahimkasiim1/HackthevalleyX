@@ -1,50 +1,215 @@
-# Welcome to your Expo app 👋
+# NavSense - Smart Navigation App 🧭
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+A React Native navigation app with real-time location tracking, turn-by-turn directions, and Google Maps integration.
 
-## Get started
+## ✨ Features
 
-1. Install dependencies
+- **Real-time Location Tracking**: Uses React Native's geolocation and watchPosition for precise location updates
+- **Turn-by-Turn Navigation**: Voice and visual notifications for upcoming turns
+- **Route Progress Tracking**: Visual progress bar showing completion percentage
+- **Google Maps Integration**: Full route visualization with polylines and markers
+- **Smart Notifications**: Alerts for upcoming turns and route completion
+- **Persistent Route Storage**: Saves routes locally for resuming navigation
+- **Cross-Platform Support**: Works on iOS, Android, and Web
 
-   ```bash
-   npm install
-   ```
+## 🛠️ Setup Instructions
 
-2. Start the app
+### Prerequisites
 
-   ```bash
-   npx expo start
-   ```
+- Node.js 18+ 
+- Expo CLI
+- Google Maps API Key
+- iOS Simulator or Android Emulator (or physical device)
 
-In the output, you'll find options to open the app in a
+### 1. Clone and Install Dependencies
 
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
+\`\`\`bash
+git clone <your-repo-url>
+cd HackthevalleyX
+npm install
+\`\`\`
 
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
+### 2. Server Setup
 
-## Get a fresh project
+\`\`\`bash
+cd server
+npm install
+cp .env.example .env
+\`\`\`
 
-When you're ready, run:
+Edit `server/.env` and add your Google Maps API key:
+\`\`\`
+GOOGLE_API_KEY=your_google_maps_api_key_here
+PARTNER_TOKEN=supersecret
+PORT=3000
+\`\`\`
 
-```bash
-npm run reset-project
-```
+### 3. Google Maps API Setup
 
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
+1. Go to [Google Cloud Console](https://console.cloud.google.com/)
+2. Create a new project or select existing one
+3. Enable the following APIs:
+   - **Places API**
+   - **Directions API** 
+   - **Geocoding API**
+   - **Maps JavaScript API** (for web)
+   - **Maps SDK for Android** (for Android)
+   - **Maps SDK for iOS** (for iOS)
+4. Create credentials → API Key
+5. Configure API key restrictions for security
 
-## Learn more
+### 4. Start the Backend Server
 
-To learn more about developing your project with Expo, look at the following resources:
+**Windows:**
+\`\`\`powershell
+.\scripts\start-server.bat
+\`\`\`
 
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
+**macOS/Linux:**
+\`\`\`bash
+./scripts/start-server.sh
+\`\`\`
 
-## Join the community
+**Manual:**
+\`\`\`bash
+cd server
+npm run dev
+\`\`\`
 
-Join our community of developers creating universal apps.
+The server will start on `http://localhost:3000`
 
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+### 5. Start the Mobile App
+
+\`\`\`bash
+npx expo start
+\`\`\`
+
+Choose your preferred option:
+- Press `i` for iOS simulator
+- Press `a` for Android emulator  
+- Press `w` for web
+- Scan QR code with Expo Go app on your device
+
+## 📱 How to Use
+
+### Building a Route
+
+1. Enter your **start location** (e.g., "UTSC", "Toronto Union Station")
+2. Enter your **destination** (e.g., "CN Tower", "Eaton Centre")
+3. Tap **"Build Route"** to generate the navigation path
+4. Review the route information (distance, duration, ETA)
+
+### Starting Navigation
+
+1. After building a route, tap **"Start Navigation"**
+2. Grant location permissions when prompted
+3. Grant notification permissions for turn alerts
+4. The app will:
+   - Track your real-time location
+   - Show progress along the route
+   - Send notifications for upcoming turns
+   - Display distance to next turn
+
+### During Navigation
+
+- **Progress Bar**: Shows percentage of route completed
+- **Next Turn Info**: Displays upcoming turn direction and distance
+- **Map View**: Real-time location with route overlay
+- **Auto-Follow**: Map automatically follows your location
+- **Turn Notifications**: Audio/visual alerts when approaching turns
+
+### Stopping Navigation
+
+- Tap **"Stop Navigation"** to end the current route
+- Navigation automatically stops when you reach your destination
+
+## 🔧 Technical Implementation
+
+### Location Tracking
+
+- Uses `expo-location` with `BestForNavigation` accuracy
+- Updates every 1 second or 5 meters movement
+- Tracks user progress along the route polyline
+- Calculates distance to route waypoints
+
+### Turn-by-Turn Directions
+
+- Monitors proximity to turn points (30m threshold)
+- Sends advance warnings at 100m before turns
+- Uses Google Directions API maneuver data
+- Converts HTML instructions to plain text
+
+### Notifications
+
+- Local push notifications for turn alerts
+- Background notifications when app is minimized
+- Custom notification sounds and vibration
+- Handles notification permissions gracefully
+
+### Route Progress Calculation
+
+- Tracks completed route segments
+- Calculates percentage based on total distance
+- Updates progress bar in real-time
+- Persists navigation state
+
+### Google Maps Integration
+
+- Displays routes using polylines
+- Shows start/end markers
+- Real-time user location
+- Auto-zoom and follow functionality
+
+## 🚨 Troubleshooting
+
+### Location Permissions
+
+**iOS**: Make sure to accept location permissions when prompted
+**Android**: Enable "Precise Location" in app settings if needed
+
+### Server Connection Issues
+
+1. Ensure server is running on `http://localhost:3000`
+2. Check that `GOOGLE_API_KEY` is set in `server/.env`
+3. Verify Google Maps APIs are enabled
+4. Check API key quotas and billing
+
+### Navigation Not Working
+
+1. Verify location permissions are granted
+2. Ensure you're testing on a physical device (simulators may have limited GPS)
+3. Check that route was built successfully before starting navigation
+4. Make sure you're outdoors with good GPS signal
+
+### Notification Issues
+
+1. Grant notification permissions when prompted
+2. Check device notification settings
+3. Ensure app has permission to send notifications
+
+## 🎯 Future Enhancements
+
+- [ ] Voice navigation announcements
+- [ ] Multiple route options (fastest, shortest, avoid highways)
+- [ ] Offline map support
+- [ ] Traffic-aware routing
+- [ ] Speed limit warnings
+- [ ] Points of interest along route
+- [ ] Route sharing functionality
+- [ ] Multiple transportation modes (driving, walking, cycling, transit)
+
+## 📄 License
+
+This project is licensed under the MIT License.
+
+## 🤝 Contributing
+
+1. Fork the repository
+2. Create a feature branch
+3. Make your changes
+4. Test thoroughly
+5. Submit a pull request
+
+---
+
+Built with ❤️ using React Native, Expo, and Google Maps API
