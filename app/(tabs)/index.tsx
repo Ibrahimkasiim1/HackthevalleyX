@@ -2,12 +2,10 @@ import { SecurePlacesAutocomplete } from '@/components/SecurePlacesAutocomplete'
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { getRoute } from '@/services/navigation';
-import { Ionicons } from '@expo/vector-icons';
 import * as Location from 'expo-location';
 import { useEffect, useState } from 'react';
-import { Alert, Dimensions, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
+import { Alert, Dimensions, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
 import MapView, { Marker, Polyline } from 'react-native-maps';
-import { SafeAreaView } from 'react-native-safe-area-context';
 
 const { width, height } = Dimensions.get('window');
 
@@ -271,14 +269,10 @@ export default function HomeScreen() {
     }
   };
 
-  // Map padding to account for UI overlays
-  const mapPadding = { top: 100, right: 16, bottom: 160, left: 16 };
-
   return (
     <ThemedView style={styles.container}>
-      <SafeAreaView style={{ flex: 1 }}>
-        {/* Haptic Popup Notification */}
-        {hapticNotification.visible && (
+      {/* Haptic Popup Notification */}
+      {hapticNotification.visible && (
         <View style={styles.hapticPopupOverlay}>
           <View style={styles.hapticPopup}>
             <View style={styles.hapticCommandContainer}>
@@ -300,102 +294,69 @@ export default function HomeScreen() {
         </View>
       )}
       
-        {/* MAP */}
-        <View style={styles.mapContainer}>
-          {currentLocation ? (
-            <MapView
-              style={styles.map}
-              initialRegion={currentLocation}
-              showsUserLocation
-              showsMyLocationButton
-              // Make room for overlays
-              onMapReady={() => {}}
-              // @ts-ignore: react-native-maps accepts this on iOS/Android
-              mapPadding={mapPadding}
-            >
-              <Marker coordinate={currentLocation} title="You" pinColor="#0A84FF" />
-
-              {routeData?.summary && (
-                <>
-                  {routeData.summary.startLocation && (
-                    <Marker
-                      coordinate={routeData.summary.startLocation}
-                      title={routeData.summary.originName || 'Start'}
-                      pinColor="green"
-                    />
-                  )}
-                  {routeData.summary.endLocation && (
-                    <Marker
-                      coordinate={routeData.summary.endLocation}
-                      title={routeData.summary.destinationName || 'Destination'}
-                      pinColor="red"
-                    />
-                  )}
-                  <Polyline
-                    coordinates={getPolylineCoordinates()}
-                    strokeColor="#0A84FF"
-                    strokeWidth={5}
+      {/* Map View */}
+      <View style={styles.mapContainer}>
+        {currentLocation ? (
+          <MapView
+            style={styles.map}
+            initialRegion={currentLocation}
+            showsUserLocation={true}
+            showsMyLocationButton={true}
+          >
+            {/* Current location marker */}
+            <Marker
+              coordinate={currentLocation}
+              title="Your Location"
+              description="You are here"
+              pinColor="blue"
+            />
+            
+            {/* Route visualization */}
+            {routeData && routeData.summary && (
+              <>
+                {routeData.summary.startLocation && (
+                  <Marker
+                    coordinate={{ 
+                      latitude: routeData.summary.startLocation.latitude, 
+                      longitude: routeData.summary.startLocation.longitude 
+                    }}
+                    title={routeData.summary.originName || "Start"}
+                    description="Start point"
+                    pinColor="green"
                   />
-                </>
-              )}
-            </MapView>
-          ) : (
-            <ThemedView style={styles.loadingMap}>
-              <ThemedText>Loading map…</ThemedText>
-            </ThemedView>
-          )}
-        </View>
-
-        {/* TURN BANNER (top overlay, non-blocking) */}
-        {isNavigationActive && routeData?.steps?.[currentStepIndex] && (
-          <View style={styles.turnBanner}>
-            <View style={styles.turnRow}>
-              <View style={styles.turnGlyph}>
-                <ThemedText style={styles.turnGlyphText}>
-                  {routeData.steps[currentStepIndex].side === 'L' ? '⬅️' :
-                   routeData.steps[currentStepIndex].side === 'R' ? '➡️' : '⬆️'}
-                </ThemedText>
-              </View>
-              <View style={{ flex: 1 }}>
-                <ThemedText style={styles.turnText}>
-                  {routeData.steps[currentStepIndex].instructionHtml
-                    ?.replace(/<[^>]*>/g, '') || 'Continue straight'}
-                </ThemedText>
-                <ThemedText style={styles.turnSub}>
-                  {distanceToNextTurn > 0 ? `${distanceToNextTurn} m • Step ${currentStepIndex + 1}/${routeData.steps.length}` : 'Calculating…'}
-                </ThemedText>
-              </View>
-            </View>
-          </View>
+                )}
+                {routeData.summary.endLocation && (
+                  <Marker
+                    coordinate={{ 
+                      latitude: routeData.summary.endLocation.latitude, 
+                      longitude: routeData.summary.endLocation.longitude 
+                    }}
+                    title={routeData.summary.destinationName || "Destination"}
+                    description="Destination"
+                    pinColor="red"
+                  />
+                )}
+                <Polyline
+                  coordinates={getPolylineCoordinates()}
+                  strokeColor="#007AFF"
+                  strokeWidth={4}
+                />
+              </>
+            )}
+          </MapView>
+        ) : (
+          <ThemedView style={styles.loadingMap}>
+            <ThemedText>📍 Loading map...</ThemedText>
+          </ThemedView>
         )}
-
-        {/* ROUTE PILL (top-right) */}
-        {isNavigationActive && routeData?.summary && (
-          <View style={styles.routePill}>
-            <Ionicons name="walk-outline" size={14} />
-            <ThemedText style={styles.routePillText}>
-              {routeData.summary.durationSeconds ? Math.round(routeData.summary.durationSeconds / 60) : 0} min • {routeData.summary.distanceMeters ? (routeData.summary.distanceMeters / 1000).toFixed(1) : 0} km
-            </ThemedText>
-          </View>
-        )}
-
-        {/* FAB for stopping navigation */}
-        {isNavigationActive && (
-          <TouchableOpacity style={styles.fab} onPress={stopNavigation}>
-            <Ionicons name="stop" size={24} color="#fff" />
-          </TouchableOpacity>
-        )}
+      </View>
 
       {/* Scrollable Navigation Controls */}
-      <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        style={{ flex: 1 }}
+      <ScrollView 
+        style={styles.scrollContainer}
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
       >
-        <ScrollView 
-          style={styles.scrollContainer}
-          contentContainerStyle={styles.scrollContent}
-          showsVerticalScrollIndicator={false}
-        >
         <ThemedText type="title" style={styles.title}>🧭 NavSense</ThemedText>
         
         {/* Security Notice */}
@@ -405,7 +366,7 @@ export default function HomeScreen() {
           </ThemedText>
         </ThemedView>
         
-        {!isNavigationActive && (
+        {!isNavigationActive ? (
           <ThemedView style={styles.inputSection}>
             {/* Origin Input */}
             <ThemedView style={styles.inputContainer}>
@@ -487,11 +448,84 @@ export default function HomeScreen() {
               </ThemedText>
             </TouchableOpacity>
           </ThemedView>
+        ) : (
+          <ThemedView style={styles.activeNavigation}>
+            <TouchableOpacity 
+              style={[styles.button, styles.stopButton]} 
+              onPress={stopNavigation}
+            >
+              <ThemedText style={styles.buttonText}>⏹️ Stop Navigation</ThemedText>
+            </TouchableOpacity>
+          </ThemedView>
         )}
 
-        </ScrollView>
-      </KeyboardAvoidingView>
-      </SafeAreaView>
+        {/* Navigation Status Display */}
+        {isNavigationActive && routeData && (
+          <ThemedView style={styles.navigationStatus}>
+            <ThemedText style={styles.statusTitle}>🧭 Navigation Status</ThemedText>
+            
+            {/* Distance to Next Turn */}
+            <ThemedView style={styles.statusRow}>
+              <ThemedText style={styles.statusLabel}>📏 Distance to Next Turn:</ThemedText>
+              <ThemedText style={styles.statusValue}>
+                {distanceToNextTurn > 0 ? `${distanceToNextTurn}m` : 'Calculating...'}
+              </ThemedText>
+            </ThemedView>
+            
+            {/* Current Step Progress */}
+            <ThemedView style={styles.statusRow}>
+              <ThemedText style={styles.statusLabel}>📍 Navigation Step:</ThemedText>
+              <ThemedText style={styles.statusValue}>
+                {currentStepIndex + 1} of {routeData.steps ? routeData.steps.length : 0}
+              </ThemedText>
+            </ThemedView>
+            
+            {/* Next Turn Command */}
+            {routeData.steps && routeData.steps[currentStepIndex] && (
+              <ThemedView style={styles.nextTurnContainer}>
+                <ThemedText style={styles.nextTurnLabel}>🎮 Next Haptic Command:</ThemedText>
+                <ThemedView style={styles.nextTurnCommand}>
+                  <ThemedText style={styles.nextTurnText}>
+                    [{routeData.steps[currentStepIndex].side || 'B'}] {routeData.steps[currentStepIndex].instructionHtml ? routeData.steps[currentStepIndex].instructionHtml.replace(/<[^>]*>/g, '').slice(0, 60) : 'Continue straight'}...
+                  </ThemedText>
+                </ThemedView>
+              </ThemedView>
+            )}
+            
+            {/* GPS Tracking Indicator */}
+            <ThemedView style={styles.gpsIndicator}>
+              <ThemedText style={styles.gpsIndicatorText}>
+                🛰️ Real-time GPS Tracking Active
+              </ThemedText>
+            </ThemedView>
+          </ThemedView>
+        )}
+
+        {routeData && routeData.summary && (
+          <ThemedView style={styles.routeInfo}>
+            <ThemedText type="subtitle">📍 Active Route</ThemedText>
+            <ThemedText style={styles.routeDetail}>
+              {routeData.summary.originName || "Start"} → {routeData.summary.destinationName || "Destination"}
+            </ThemedText>
+            <ThemedText style={styles.routeDetail}>
+              {routeData.summary.distanceMeters ? (routeData.summary.distanceMeters / 1000).toFixed(1) : "0"} km • {routeData.summary.durationSeconds ? Math.round(routeData.summary.durationSeconds / 60) : "0"} min
+            </ThemedText>
+            
+            {/* Haptic Steps Preview */}
+            <ThemedView style={styles.hapticPreview}>
+              <ThemedText style={styles.hapticTitle}>� Upcoming Haptic Commands:</ThemedText>
+              {routeData.steps && routeData.steps.length > 0 && routeData.steps.slice(0, 3).map((step: any, index: number) => (
+                <ThemedView key={index} style={styles.hapticStep}>
+                  <ThemedText style={styles.hapticCommand}>[{step.side || 'B'}]</ThemedText>
+                  <ThemedText style={styles.hapticText}>
+                    {step.instructionHtml ? step.instructionHtml.replace(/<[^>]*>/g, '').slice(0, 50) : 'Continue straight'}...
+                  </ThemedText>
+                </ThemedView>
+              ))}
+            </ThemedView>
+          </ThemedView>
+        )}
+      </ScrollView>
     </ThemedView>
   );
 }
@@ -499,10 +533,11 @@ export default function HomeScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#fff',
+    backgroundColor: '#f8f9fa',
   },
   mapContainer: {
-    flex: 1, // Full height for better navigation experience
+    height: height * 0.4, // Better balance for autocomplete
+    width: '100%',
   },
   map: {
     flex: 1,
@@ -513,83 +548,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     backgroundColor: 'rgba(0,0,0,0.05)',
   },
-  // Turn banner overlay styles
-  turnBanner: {
-    position: 'absolute', 
-    top: 12, 
-    left: 12, 
-    right: 12,
-    backgroundColor: 'rgba(255,255,255,0.96)',
-    borderRadius: 14, 
-    padding: 12,
-    shadowColor: '#000', 
-    shadowOpacity: 0.12, 
-    shadowRadius: 8, 
-    shadowOffset: { width: 0, height: 3 },
-    elevation: 5,
-  },
-  turnRow: { 
-    flexDirection: 'row', 
-    alignItems: 'center', 
-    gap: 12 
-  },
-  turnGlyph: { 
-    width: 44, 
-    height: 44, 
-    borderRadius: 10, 
-    alignItems: 'center', 
-    justifyContent: 'center', 
-    backgroundColor: '#EEF5FF' 
-  },
-  turnGlyphText: { 
-    fontSize: 22, 
-    fontWeight: '700' 
-  },
-  turnText: { 
-    fontSize: 16, 
-    fontWeight: '600' 
-  },
-  turnSub: { 
-    fontSize: 12, 
-    opacity: 0.7, 
-    marginTop: 2 
-  },
-  // Route pill styles
-  routePill: {
-    position: 'absolute', 
-    top: 12, 
-    right: 12,
-    flexDirection: 'row', 
-    alignItems: 'center', 
-    gap: 6,
-    paddingHorizontal: 10, 
-    paddingVertical: 6,
-    backgroundColor: 'rgba(255,255,255,0.96)',
-    borderRadius: 999,
-    shadowColor: '#000', 
-    shadowOpacity: 0.08, 
-    shadowRadius: 6, 
-    shadowOffset: { width: 0, height: 2 },
-    elevation: 3,
-  },
-  routePillText: { 
-    fontSize: 12, 
-    fontWeight: '600' 
-  },
   scrollContainer: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    maxHeight: '60%',
-    backgroundColor: 'rgba(255,255,255,0.95)',
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: -2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 10,
-    elevation: 5,
+    flex: 1,
+    backgroundColor: '#f8f9fa',
   },
   scrollContent: {
     padding: 20,
@@ -896,22 +857,5 @@ const styles = StyleSheet.create({
     fontSize: 13,
     textAlign: 'center',
     fontWeight: '500',
-  },
-  // FAB (Floating Action Button) for stop navigation
-  fab: {
-    position: 'absolute',
-    right: 20,
-    bottom: 100,
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    backgroundColor: '#FF3B30',
-    alignItems: 'center',
-    justifyContent: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 8,
-    elevation: 8,
   },
 });
