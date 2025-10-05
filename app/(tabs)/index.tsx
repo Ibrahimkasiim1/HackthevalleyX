@@ -2,10 +2,10 @@ import { SecurePlacesAutocomplete } from '@/components/SecurePlacesAutocomplete'
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { getRoute } from '@/services/navigation';
+import Mapbox from '@rnmapbox/maps';
 import * as Location from 'expo-location';
 import { useEffect, useState } from 'react';
 import { Alert, Dimensions, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
-import MapView, { Marker, Polyline, PROVIDER_GOOGLE } from 'react-native-maps';
 
 const { width, height } = Dimensions.get('window');
 
@@ -211,6 +211,7 @@ export default function HomeScreen() {
       // Use current location as new starting point
       const currentLocationString = `${userLat},${userLon}`;
       
+      // TODO: Replace with Mapbox routing
       // Get new route from current position to original destination
       const newRoute = await getRoute(
         currentLocationString, 
@@ -312,6 +313,8 @@ export default function HomeScreen() {
         longitude: currentLocation.longitude
       } : undefined;
       
+      // TODO: Replace with Mapbox routing
+      // For now, keeping Google routing until we set up Mapbox API key
       const route = await getRoute(fromLocation, destination, transportMode, userLocationForBias);
       setRouteData(route);
       setIsNavigationActive(true);
@@ -405,19 +408,30 @@ export default function HomeScreen() {
     return coordinates;
   };
 
-  // Decode polyline to coordinates for map display
+  // Get polyline coordinates for map display (handles both Google and Mapbox formats)
   const getPolylineCoordinates = () => {
-    if (!routeData?.polyline?.points) return [];
+    if (!routeData?.polyline) return [];
     
-    try {
-      return decodePolyline(routeData.polyline.points);
-    } catch (error) {
-      // Fallback to start/end points if decode fails
-      return [
-        { latitude: routeData.summary.startLocation.latitude, longitude: routeData.summary.startLocation.longitude },
-        { latitude: routeData.summary.endLocation.latitude, longitude: routeData.summary.endLocation.longitude }
-      ];
+    // Check if we have Mapbox coordinates format
+    if (routeData.polyline.coordinates) {
+      // Mapbox format: array of [longitude, latitude]
+      return routeData.polyline.coordinates.map((coord: [number, number]) => ({
+        latitude: coord[1],
+        longitude: coord[0]
+      }));
     }
+    
+    // Check if we have Google polyline encoding
+    if (routeData.polyline.points) {
+      try {
+        return decodePolyline(routeData.polyline.points);
+      } catch (error) {
+        console.warn('Failed to decode polyline:', error);
+      }
+    }
+    
+    // Fallback: return empty array (no route line will be shown)
+    return [];
   };
 
   return (
@@ -448,69 +462,78 @@ export default function HomeScreen() {
       {/* Map View */}
       <View style={styles.mapContainer}>
         {currentLocation ? (
-          <MapView
-            provider={PROVIDER_GOOGLE}
+          <Mapbox.MapView
             style={styles.map}
-            initialRegion={currentLocation}
-            camera={navigationMode === 'navigation' && isNavigationActive ? {
-              center: {
-                latitude: currentLocation.latitude,
-                longitude: currentLocation.longitude,
-              },
-              pitch: 60, // 3D perspective for walking navigation
-              heading: userHeading, // Rotate map based on walking direction
-              zoom: 18, // Street-level zoom for detailed navigation
-            } : undefined}
-            showsUserLocation={true}
-            showsMyLocationButton={!isNavigationActive}
-            followsUserLocation={isNavigationActive}
-            rotateEnabled={true}
-            pitchEnabled={true}
+            styleURL={Mapbox.StyleURL.Street}
             zoomEnabled={true}
             scrollEnabled={!isNavigationActive || navigationMode === 'overview'}
-            mapType={navigationMode === 'navigation' ? 'standard' : 'standard'}
+            rotateEnabled={true}
+            pitchEnabled={true}
           >
-            {/* Current location marker */}
-            <Marker
-              coordinate={currentLocation}
-              title="Your Location"
-              description="You are here"
-              pinColor="blue"
+            {/* Camera control for navigation mode */}
+            <Mapbox.Camera
+              ref={(camera) => {
+                // Store camera reference for programmatic control
+                if (camera) {
+                  // You can store this ref if needed for manual camera control
+                }
+              }}
+              centerCoordinate={[currentLocation.longitude, currentLocation.latitude]}
+              pitch={navigationMode === 'navigation' && isNavigationActive ? 60 : 0}
+              heading={navigationMode === 'navigation' && isNavigationActive ? userHeading : 0}
+              zoomLevel={navigationMode === 'navigation' && isNavigationActive ? 17 : 15}
+              followUserLocation={isNavigationActive}
+              animationDuration={1000}
             />
-            
+
+            {/* User location display */}
+            <Mapbox.UserLocation
+              visible={true}
+              showsUserHeadingIndicator={true}
+              minDisplacement={5}
+            />
+
             {/* Route visualization */}
-            {routeData && routeData.summary && (
-              <>
-                {routeData.summary.startLocation && (
-                  <Marker
-                    coordinate={{ 
-                      latitude: routeData.summary.startLocation.latitude, 
-                      longitude: routeData.summary.startLocation.longitude 
-                    }}
-                    title={routeData.summary.originName || "Start"}
-                    description="Start point"
-                    pinColor="green"
-                  />
-                )}
-                {routeData.summary.endLocation && (
-                  <Marker
-                    coordinate={{ 
-                      latitude: routeData.summary.endLocation.latitude, 
-                      longitude: routeData.summary.endLocation.longitude 
-                    }}
-                    title={routeData.summary.destinationName || "Destination"}
-                    description="Destination"
-                    pinColor="red"
-                  />
-                )}
-                <Polyline
-                  coordinates={getPolylineCoordinates()}
-                  strokeColor="#007AFF"
-                  strokeWidth={4}
+            {routeData && routeData.polyline && routeData.polyline.coordinates && (
+              <Mapbox.ShapeSource
+                id="routeSource"
+                shape={{
+                  type: 'Feature',
+                  properties: {},
+                  geometry: {
+                    type: 'LineString',
+                    coordinates: routeData.polyline.coordinates
+                  }
+                }}
+              >
+                <Mapbox.LineLayer
+                  id="routeLine"
+                  style={{
+                    lineColor: '#007AFF',
+                    lineWidth: 6,
+                    lineOpacity: 0.8,
+                    lineCap: 'round',
+                    lineJoin: 'round'
+                  }}
                 />
-              </>
+              </Mapbox.ShapeSource>
             )}
-          </MapView>
+
+            {/* Destination marker */}
+            {routeData && routeData.summary && routeData.summary.endLocation && (
+              <Mapbox.PointAnnotation
+                id="destination"
+                coordinate={[
+                  routeData.summary.endLocation.longitude,
+                  routeData.summary.endLocation.latitude
+                ]}
+              >
+                <View style={styles.destinationMarker}>
+                  <ThemedText style={styles.markerText}>📍</ThemedText>
+                </View>
+              </Mapbox.PointAnnotation>
+            )}
+          </Mapbox.MapView>
         ) : (
           <ThemedView style={styles.loadingMap}>
             <ThemedText>📍 Loading map...</ThemedText>
@@ -1086,5 +1109,20 @@ const styles = StyleSheet.create({
   viewToggleButton: {
     backgroundColor: '#6f42c1',
     flex: 1,
+  },
+  // Mapbox marker styles
+  destinationMarker: {
+    backgroundColor: '#FF3B30',
+    borderRadius: 20,
+    width: 40,
+    height: 40,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 3,
+    borderColor: '#fff',
+  },
+  markerText: {
+    fontSize: 20,
+    color: '#fff',
   },
 });

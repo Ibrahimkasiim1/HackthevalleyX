@@ -5,6 +5,9 @@ import 'react-native-reanimated';
 
 import { useColorScheme } from '@/hooks/use-color-scheme';
 
+// Initialize Mapbox
+import '../mapbox-config';
+
 export const unstable_settings = {
   anchor: '(tabs)',
 };

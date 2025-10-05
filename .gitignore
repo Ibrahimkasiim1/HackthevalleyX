@@ -44,3 +44,5 @@ app-example
 
 #server
 server/.env
+
+.env
